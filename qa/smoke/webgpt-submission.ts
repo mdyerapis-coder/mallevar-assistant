@@ -67,9 +67,9 @@ async function cli(command: CoreCommand): Promise<CliResult> {
 async function cliOk<T>(command: CoreCommand): Promise<T> {
   const result = await cli(command);
   assert.equal(result.status, 0, `CLI failure (${result.status}): ${result.err.slice(0, 512)}`);
-  const reply = JSON.parse(result.out) as { type: string; code?: string; value?: T };
-  assert.equal(reply.type, "ok", `core rejected: ${reply.code}`);
-  return reply.value as T;
+  // The CLI prints the typed leaf value, not the CoreReply envelope
+  // (crates/ironbark-cli emit(): leaf_json); a core failure exits non-zero.
+  return JSON.parse(result.out) as T;
 }
 async function cliError(command: CoreCommand): Promise<{ code: string; message: string; status: number }> {
   const result = await cli(command);

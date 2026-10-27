@@ -162,7 +162,7 @@ const worker = serveProviderRpc(framesOf(input), sink.write, (connection: Connec
 
 function policy(connectionId: string): ProjectPolicy {
   return {
-    version: 1,
+    version: "1",
     project_id: PROJECT,
     allowed_connection_ids: [connectionId],
     allowed_tools: [],
@@ -264,7 +264,7 @@ try {
         state: "qualified",
         implementation_version: CUSTOM_IMPLEMENTATION_VERSION,
         evidence_digest: probeDigest,
-        observed_at: Date.now(),
+        observed_at: String(Date.now()),
       },
     ],
   };
@@ -421,7 +421,7 @@ try {
         state: "qualified",
         implementation_version: CUSTOM_IMPLEMENTATION_VERSION,
         evidence_digest: probeDigest,
-        observed_at: Date.now(),
+        observed_at: String(Date.now()),
       }],
     }],
     allowed_projects: [PROJECT],

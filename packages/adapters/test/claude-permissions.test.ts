@@ -113,7 +113,7 @@ const ACTION = {
   kind: 'file_write',
   canonical_args: {},
   scope: {},
-  policy_version: 1,
+  policy_version: "1",
   expected_state_digest: 'd'.repeat(64),
 } as ActionSpec;
 
@@ -122,7 +122,7 @@ type State = { dir: string; binary: string };
 /** Build an isolated managed session input; `contextDigest` is the snapshot the session is bound to. */
 function sessionInput(cwd: string, contextDigest: string, resume?: SessionRef): OpenSessionInput {
   const policy: ProjectPolicy = {
-    version: 1,
+    version: "1",
     project_id: PROJECT,
     allowed_connection_ids: ['local'],
     allowed_tools: ['Write'],
@@ -132,7 +132,7 @@ function sessionInput(cwd: string, contextDigest: string, resume?: SessionRef): 
     local_only: true,
     max_workers: 1,
     max_requests: 4,
-    max_cost_microusd: 0,
+    max_cost_microusd: "0",
     spend_policy: 'free_only',
     allow_unknown_cost: false,
   };
@@ -232,7 +232,7 @@ function makeDenyingHost(): {
   const events: Array<Record<string, unknown>> = [];
   const host: NativePermissionHost = {
     async state() {
-      return { policy_version: 1, state_digest: 'd'.repeat(64) };
+      return { policy_version: "1", state_digest: 'd'.repeat(64) };
     },
     async prepareAction(request) {
       calls.push(request);
@@ -306,7 +306,7 @@ describe('claude adapter permissions and settings', () => {
       const calls: NativePermissionRequest[] = [];
       const host: NativePermissionHost = {
         async state() {
-          return { policy_version: 1, state_digest: 'd'.repeat(64) };
+          return { policy_version: "1", state_digest: 'd'.repeat(64) };
         },
         async prepareAction(request) {
           calls.push(request);

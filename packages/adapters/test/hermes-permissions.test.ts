@@ -145,7 +145,7 @@ type Evidence = {
 
 function policy(): ProjectPolicy {
   return {
-    version: 1,
+    version: "1",
     project_id: PROJECT,
     allowed_connection_ids: ['local'],
     allowed_tools: ['read'],
@@ -155,7 +155,7 @@ function policy(): ProjectPolicy {
     local_only: true,
     max_workers: 1,
     max_requests: 4,
-    max_cost_microusd: 0,
+    max_cost_microusd: "0",
     spend_policy: 'free_only',
     allow_unknown_cost: false,
   };
@@ -248,7 +248,7 @@ function makeHost(): {
   const events: Array<Record<string, unknown>> = [];
   const host: NativePermissionHost = {
     async state() {
-      return { policy_version: 1, state_digest: 'd'.repeat(64) };
+      return { policy_version: "1", state_digest: 'd'.repeat(64) };
     },
     async prepareAction(request) {
       calls.push(request);
@@ -400,7 +400,7 @@ describe('hermes adapter permissions', () => {
     const host: NativePermissionHost = {
       async state() {
         await gate.promise;
-        return { policy_version: 1, state_digest: 'd'.repeat(64) };
+        return { policy_version: "1", state_digest: 'd'.repeat(64) };
       },
       async prepareAction() {
         throw new Error('unexpected permission request during cancel test');

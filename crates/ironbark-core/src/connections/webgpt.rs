@@ -1005,13 +1005,12 @@ impl WebGptService {
             .map_err(|_| CoreError::new("webgpt_sidecar_failed", "failed to spawn the pinned sidecar"))?;
         let deadline = tokio::time::sleep(timeout);
         tokio::pin!(deadline);
-        let outcome = loop {
-            tokio::select! {
-                result = child.wait() => break result.map_err(|e| CoreError::new("webgpt_sidecar_failed", format!("sidecar wait failed: {e}"))),
-                _ = &mut deadline => {
-                    let _ = child.kill().await;
-                    break child.wait().await.map_err(|_| CoreError::new("webgpt_sidecar_failed", "sidecar wait failed after timeout kill"));
-                }
+        // Both select arms terminate: no loop is needed (clippy::never_loop).
+        let outcome = tokio::select! {
+            result = child.wait() => result.map_err(|e| CoreError::new("webgpt_sidecar_failed", format!("sidecar wait failed: {e}"))),
+            _ = &mut deadline => {
+                let _ = child.kill().await;
+                child.wait().await.map_err(|_| CoreError::new("webgpt_sidecar_failed", "sidecar wait failed after timeout kill"))
             }
         };
         let status = outcome?;

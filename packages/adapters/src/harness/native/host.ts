@@ -25,7 +25,7 @@ export function digest(value: unknown): string {
 }
 
 /** Core-issued policy state for a managed native session. Never derive policy here. */
-export type NativeSessionState = { policy_version: number; state_digest: string };
+export type NativeSessionState = { policy_version: string; state_digest: string };
 
 /** A native permission request surfaced to the core before any approval reply is sent. */
 export type NativePermissionRequest = {

@@ -231,7 +231,7 @@ function revisionsInDb(dbPath: string, projectId: string): number {
 }
 
 /// A shape the `PolicyService` accepts: local route allowed, bounded workers.
-function localPolicy(projectId: string, version: number): ProjectPolicy {
+function localPolicy(projectId: string, version: string): ProjectPolicy {
   return {
     version,
     project_id: projectId,
@@ -364,7 +364,7 @@ try {
 
   // A committed project policy: without it retrieval is refused.
   const policyPath = join(temp, "policy-v1.json");
-  await writeFile(policyPath, JSON.stringify(localPolicy(projectId, 1)));
+  await writeFile(policyPath, JSON.stringify(localPolicy(projectId, "1")));
   const committed = await cliJson<ProjectPolicy>(envA, ["policy", "set", "--project", projectId, "--file", policyPath]);
   assert.equal(committed.version, 1);
   assert.equal(committed.project_id, projectId);
@@ -377,14 +377,14 @@ try {
 
   // Equal / stale version is refused; a strictly greater version commits.
   const stalePath = join(temp, "policy-v1-stale.json");
-  await writeFile(stalePath, JSON.stringify(localPolicy(projectId, 1)));
+  await writeFile(stalePath, JSON.stringify(localPolicy(projectId, "1")));
   const stale = await spawnCapture(cliBinary, ["policy", "set", "--project", projectId, "--file", stalePath], envA);
   assert.notEqual(stale.code, 0, "re-committing an equal version must be refused");
   assert.match(stale.stderr, /stale_policy_version/, `expected stale_policy_version, got: ${stale.stderr.trim()}`);
   record("policy set (equal version)", `ironbark-cli policy set --project ${projectId} --file ${stalePath}`, stale.code, "typed refusal: an equal version is stale", stale.stderr.trim().split("\n")[0]);
 
   const policyV2Path = join(temp, "policy-v2.json");
-  await writeFile(policyV2Path, JSON.stringify(localPolicy(projectId, 2)));
+  await writeFile(policyV2Path, JSON.stringify(localPolicy(projectId, "2")));
   const committedV2 = await cliJson<ProjectPolicy>(envA, ["policy", "set", "--project", projectId, "--file", policyV2Path]);
   assert.equal(committedV2.version, 2);
   record("policy set (version 2)", `ironbark-cli policy set --project ${projectId} --file ${policyV2Path}`, 0, "version 2 commits past the refused stale set", `version ${committedV2.version}`);
@@ -470,7 +470,7 @@ try {
   // ═══════ Phase B: offline restore, then retrieval returns the same hit ═════
   const restore = await cliJson<RestoreReport>(envB, ["backup", "restore", "--source", backupDir, "--new-namespace"]);
   assert.equal(restore.stopped, true);
-  assert.ok(restore.blocked_runs >= 1, "the restore must block the in-flight run rather than replay it");
+  assert.ok(BigInt(restore.blocked_runs) >= 1n, "the restore must block the in-flight run rather than replay it");
   record("backup restore --new-namespace", `ironbark-cli backup restore --source ${backupDir} --new-namespace`, 0, "an offline RestoreReport into a fresh namespace", `stopped ${restore.stopped}, blocked_runs ${restore.blocked_runs}`);
 
   running.push(await startInstalledCore(envB, "restored"));

@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { resolve } from "node:path";
-import type { CoreCommand, CoreReply, ConversationHistory, QueuedTurn, BranchId, MessageView, EventEnvelope } from "../../packages/contracts/src/generated";
+import type { CoreCommand, ConversationHistory, QueuedTurn, BranchId, MessageView, EventEnvelope } from "../../packages/contracts/src/generated";
 
 // Parent exports these DTOs from Rust and implements generic CLI `command`.
 // This smoke never installs/builds binaries, fabricates worker events, or uses a
@@ -20,17 +20,17 @@ async function cli<T>(command: CoreCommand, requestId = crypto.randomUUID()): Pr
   try {
     const [out, err, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
     if (status !== 0) throw new Error(`CLI failure (${status}): ${err.slice(0, 512)}`);
-    const reply = JSON.parse(out) as CoreReply;
-    if (reply.type !== "ok") throw new Error(`core capability/policy failure: ${reply.code}`);
-    return reply.value as T;
+    // The CLI prints the typed leaf value, not the CoreReply envelope
+    // (crates/ironbark-cli emit(): leaf_json); a core failure exits non-zero.
+    return JSON.parse(out) as T;
   } finally { clearTimeout(timer); }
 }
 const parts = (text: string) => [{ type: "text" as const, text }];
 const projectedText = (message: MessageView) => message.parts.filter((p) => p.type === "text").map((p) => p.type === "text" ? p.text : "").join("");
 function receipts(history: ConversationHistory, run: string): EventEnvelope[] {
-  const bySequence = new Map<number, EventEnvelope>();
+  const bySequence = new Map<string, EventEnvelope>();
   for (const branch of history.branches) for (const message of branch.messages) for (const event of message.receipts) if (event.run_id === run) bySequence.set(event.seq, event);
-  return [...bySequence.values()].sort((a, b) => a.seq - b.seq);
+  return [...bySequence.values()].sort((a, b) => (BigInt(a.seq) > BigInt(b.seq) ? 1 : BigInt(a.seq) < BigInt(b.seq) ? -1 : 0));
 }
 async function poll(conversation: string, predicate: (history: ConversationHistory) => boolean, timeout = 120_000): Promise<ConversationHistory> {
   const end = Date.now() + timeout;

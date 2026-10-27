@@ -13,7 +13,7 @@ import { withNativeFixture, type NativeFixture } from './fixtures/native-process
 
 /** Minimal host for offline tests — records calls but never allows. */
 const testHost: NativePermissionHost = {
-  async state() { return { policy_version: 0, state_digest: 'test' }; },
+  async state() { return { policy_version: "0", state_digest: 'test' }; },
   async prepareAction() { throw new Error('testHost.prepareAction not implemented'); },
   async verifyAnswer() { return true; },
   async recordNativeEvent() { /* noop */ },
@@ -27,7 +27,7 @@ function testInput(harness: HarnessKind, cwd: string, resume?: SessionRef): Open
     cwd,
     route: { connection_id: 'test', model_id: 'auto', harness },
     context: { digest: 'd', brief: '', constraints: [], excerpts: [], artifacts: [], unresolved_questions: [], originating_sessions: [] },
-    policy: { version: 1, project_id: `proj_${harness}_test`, allowed_connection_ids: [], allowed_tools: [], read_roots: [], write_roots: [], network_destinations: [], local_only: false, max_workers: 1, max_requests: 1, max_cost_microusd: 0, spend_policy: 'free_only', allow_unknown_cost: false },
+    policy: { version: "1", project_id: `proj_${harness}_test`, allowed_connection_ids: [], allowed_tools: [], read_roots: [], write_roots: [], network_destinations: [], local_only: false, max_workers: 1, max_requests: 1, max_cost_microusd: "0", spend_policy: 'free_only', allow_unknown_cost: false },
     resume,
   };
 }

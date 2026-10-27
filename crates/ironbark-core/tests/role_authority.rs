@@ -101,7 +101,8 @@ fn authority(run: RunId, project: ProjectId, tools: &[&str], root: &str, expires
     parse(json!({
         "run_id": run, "project_id": project, "owner_approval_id": Uuid::new_v4(),
         "scope": { "read_roots": [root], "write_roots": [root], "tools": tools, "connection_ids": [], "network_destinations": [] },
-        "policy_version": 1, "expires_at": expires_at
+        // Wire contract: u64/i64 fields are canonical decimal STRINGS.
+        "policy_version": "1", "expires_at": expires_at.to_string()
     }))
 }
 

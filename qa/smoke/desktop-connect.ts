@@ -110,7 +110,7 @@ class Wire {
   // A subscription socket is dedicated: the core rejects commands on it. This
   // is the exact shape of CoreClient::subscribe the desktop uses for the
   // subscribe_events Tauri command.
-  subscribe(afterSeq: number): void {
+  subscribe(afterSeq: string): void {
     this.send({ type: "subscribe", after_seq: afterSeq });
   }
   async nextEvent(): Promise<Extract<ServerFrame, { type: "event" }>["event"]> {
@@ -122,7 +122,7 @@ class Wire {
 }
 function ok(reply: CoreReply): unknown {
   if (reply.type !== "ok") throw new Error(`core ${reply.code}: ${reply.message}`);
-  return reply.value;
+  return reply.value.value;
 }
 async function nonce(): Promise<string> { return (await readFile(join(runtime, "session.nonce"), "utf8")).trim(); }
 async function start(): Promise<void> {
@@ -305,9 +305,9 @@ try {
     await seeder.request(crypto.randomUUID(), { type: "project_create", name: "desktop-event", root: join(temp, "proj2") });
     seeder.close();
     const sub = await Wire.connect(await nonce());
-    sub.subscribe(0);
+    sub.subscribe("0");
     const event = await sub.nextEvent();
-    assert.ok(event.seq >= 1, "replayed event must have a real sequence");
+    assert.ok(BigInt(event.seq) >= 1n, "replayed event must have a real sequence");
     assert.equal(event.protocol, 1, "event protocol");
     assert.equal((event.payload as { type: string }).type, "state_changed", "first durable event is the project creation");
     sub.close();

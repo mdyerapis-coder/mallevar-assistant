@@ -154,8 +154,8 @@ try {
       pin: { connection_id: "smoke-conn", model_id: "smoke-model" },
       native_session: session ?? null,
       artifacts: artifacts as any,
-      recorded_pid: recordedPid,
-      recorded_start_time: recordedStartTime,
+      recorded_pid: String(recordedPid),
+      recorded_start_time: String(recordedStartTime),
     }, "run-start-" + crypto.randomUUID());
   }
 
@@ -224,7 +224,7 @@ try {
   // Inspect runA: should be blocked (migration blocks running->blocked)
   const reportA = await runInspect(runA);
   assert.strictEqual(reportA.run_state, "blocked");
-  assert(reportA.recorded_pid === process.pid, "recorded pid preserved");
+  assert(reportA.recorded_pid === String(process.pid), "recorded pid preserved");
   assert(reportA.pending_mutation === false);
   assert(reportA.uncertain_actions.length === 0);
   evidence.reportA = reportA;

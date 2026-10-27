@@ -410,10 +410,10 @@ try {
   notes.push("Adapter fs access: AcpAdapterBase advertises clientCapabilities.fs.{readTextFile,writeTextFile}=true; under IRONBARK_LIVE_HARNESS=1 it now serves `fs/write_text_file`/`fs/read_text_file` confined to the session worktree, so OMP's edit tool lands a real file (previously it was answered {denied:true}, which OMP treated as success while writing nothing). Without the gate the fail-closed deny is unchanged.");
 
   const policy: ProjectPolicy = {
-    version: 1, project_id: project.id, allowed_connection_ids: [pinnedConnection],
+    version: "1", project_id: project.id, allowed_connection_ids: [pinnedConnection],
     allowed_tools: ["write", "read", "bash"], read_roots: [worktree], write_roots: [worktree],
     network_destinations: [], local_only: true, max_workers: 1, max_requests: 16,
-    max_cost_microusd: 0, spend_policy: "free_only", allow_unknown_cost: false,
+    max_cost_microusd: "0", spend_policy: "free_only", allow_unknown_cost: false,
   };
   const policyPath = join(temp, "policy.json");
   await writeFile(policyPath, JSON.stringify(policy));

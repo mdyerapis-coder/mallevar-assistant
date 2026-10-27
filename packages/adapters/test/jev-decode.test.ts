@@ -152,8 +152,11 @@ describe("runtime and provenance boundary", () => {
     expect(record.score).toEqual({ type: "none" });
     expect(record.qualification_digest).toBeUndefined();
     expect(record.prompt_digest).toMatch(/^[0-9a-f]{64}$/);
-    expect(Number.isInteger(record.latency_ms)).toBe(true);
-    expect(record.latency_ms).toBeGreaterThanOrEqual(0);
+    // Wire contract: latency_ms is a canonical uint64 decimal STRING
+    // (Rust serde wire::u64; generated JudgmentRecord type), never a JSON
+    // number. Assert the canonical lexeme, not a numeric type.
+    expect(record.latency_ms).toMatch(/^(0|[1-9][0-9]*)$/);
+    expect(BigInt(record.latency_ms)).toBeGreaterThanOrEqual(0n);
     const body = JSON.parse(f.requests.find(r => r.url.endsWith("/completion"))!.init.body as string);
     expect(body.grammar).toContain('"ABSTAIN"');
     expect(body.prompt).toContain(text);

@@ -2,7 +2,7 @@ import { decodeFrames, encodeFrame } from '../rpc.ts';
 import type { RoutePin } from '../../../contracts/src/generated.ts';
 
 export type AlphaIdentity = { buildDigest: string; effectiveRoute: RoutePin; cwd: string; allowedTools: string[]; profile: string; socket: string };
-export type NativeAction = { session_id: string; tool_call_id: string; resolved_name: string; canonical_input: unknown; cwd: string; route: RoutePin; policy_version: number; state_digest: string };
+export type NativeAction = { session_id: string; tool_call_id: string; resolved_name: string; canonical_input: unknown; cwd: string; route: RoutePin; policy_version: string; state_digest: string };
 export type NativePermission = { request_id: string; action: NativeAction };
 export type StopObservation = { session_id: string; cancelled: boolean; active_tools: number; children: { terminated: boolean }[] };
 export function canonical(value: unknown): string {

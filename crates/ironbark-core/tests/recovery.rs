@@ -34,7 +34,8 @@ fn digest(seed: &str) -> Digest {
 
 fn policy_value(project: ProjectId, version: u64) -> ProjectPolicy {
     serde_json::from_value(json!({
-        "version": version,
+        // Wire contract: policy version is a canonical uint64 decimal STRING.
+        "version": version.to_string(),
         "project_id": project,
         "allowed_connection_ids": ["local"],
         "allowed_tools": ["publish"],
@@ -166,7 +167,8 @@ fn action(run: RunId, project: ProjectId) -> ActionSpec {
         "canonical_args": { "artifact_digest": digest("a") },
         "scope": { "tools": ["publish"], "paths": [] },
         "destination": "https://allowed.example/upload",
-        "policy_version": POLICY_VERSION_1,
+        // Wire contract: policy version is a canonical uint64 decimal STRING.
+        "policy_version": POLICY_VERSION_1.to_string(),
         "expected_state_digest": digest("b"),
     }))
     .unwrap()

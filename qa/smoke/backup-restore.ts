@@ -110,7 +110,7 @@ try {
   // Core remains live throughout online backup.
   const liveStatus = await json<{ projects: number }>(originalEnv, ["status"]); assert.equal(liveStatus.projects, 1);
   const report = await json<RestoreReport>(restoredEnv, ["backup", "restore", "--source", backup, "--new-namespace"]);
-  assert.equal(report.stopped, true); assert(report.blocked_runs >= 1);
+  assert.equal(report.stopped, true); assert(BigInt(report.blocked_runs) >= 1n);
   assert(!(await exists(runtime(restoredEnv)))); assert(!(await exists(join(restoredEnv.XDG_STATE_HOME, "ironbark-assistant"))));
   restoredDaemon = await start(restoredEnv);
   assert.deepEqual(await command(restoredEnv, ["artifact", "read", "--project", project.id, "--id", imported.artifact_id]), sourceBytes);

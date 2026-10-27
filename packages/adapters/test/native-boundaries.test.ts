@@ -22,7 +22,7 @@ import type { HarnessKind, OpenSessionInput, SessionRef, TurnInput } from '../..
 
 /** A host that never silently allows: `prepareAction` is the core's decision. */
 const host: NativePermissionHost = {
-  async state() { return { policy_version: 1, state_digest: 'd'.repeat(64) }; },
+  async state() { return { policy_version: "1", state_digest: 'd'.repeat(64) }; },
   async prepareAction() { throw new Error('CoreDeniedUnknownPermission'); },
   async verifyAnswer() { return false; },
   async recordNativeEvent() { /* noop */ },
@@ -36,7 +36,7 @@ function input(harness: HarnessKind, overrides: Partial<OpenSessionInput> = {}):
     route: { connection_id: 'local', model_id: 'm', harness },
     context: { digest: 'd', brief: '', constraints: [], excerpts: [], artifacts: [], unresolved_questions: [], originating_sessions: [] },
     policy: {
-      version: 1,
+      version: "1",
       project_id: 'proj-1',
       allowed_connection_ids: ['local'],
       allowed_tools: ['read'],
@@ -46,7 +46,7 @@ function input(harness: HarnessKind, overrides: Partial<OpenSessionInput> = {}):
       local_only: true,
       max_workers: 1,
       max_requests: 4,
-      max_cost_microusd: 0,
+      max_cost_microusd: "0",
       spend_policy: 'free_only',
       allow_unknown_cost: false,
     },
@@ -154,7 +154,7 @@ describe('native boundary — isolated discovery and owned process lifetime', ()
     // A permission reply is bound to the exact request and action.
     const request: NativePermission = {
       request_id: 'req-1',
-      action: { session_id: 's', tool_call_id: 'tc', resolved_name: 'write', canonical_input: {}, cwd: '/tmp', route: identity.effectiveRoute, policy_version: 1, state_digest: 'd'.repeat(64) },
+      action: { session_id: 's', tool_call_id: 'tc', resolved_name: 'write', canonical_input: {}, cwd: '/tmp', route: identity.effectiveRoute, policy_version: "1", state_digest: 'd'.repeat(64) },
     };
     expect(() => permissionReply(request, { ...request, request_id: 'other', allowed: true })).toThrow(/PermissionIdentityMismatch/);
     expect(permissionReply(request, { ...request, allowed: false }).allowed).toBe(false);

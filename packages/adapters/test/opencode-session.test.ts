@@ -143,7 +143,7 @@ function readDoubleLog(double: Double): string {
 
 /** Deny-by-default host: the core refuses the permission before any approval reply is sent. */
 const denyingHost: NativePermissionHost = {
-  async state() { return { policy_version: 1, state_digest: 'd'.repeat(64) }; },
+  async state() { return { policy_version: "1", state_digest: 'd'.repeat(64) }; },
   async prepareAction() { throw new Error('CoreDeniedUnknownPermission'); },
   async verifyAnswer() { return false; },
   async recordNativeEvent() { /* noop */ },
@@ -157,7 +157,7 @@ function input(harness: HarnessKind, overrides: Partial<OpenSessionInput> = {}):
     route: { connection_id: 'local', model_id: 'm', harness },
     context: { digest: 'd', brief: '', constraints: [], excerpts: [], artifacts: [], unresolved_questions: [], originating_sessions: [] },
     policy: {
-      version: 1,
+      version: "1",
       project_id: 'proj-1',
       allowed_connection_ids: ['local'],
       allowed_tools: ['read'],
@@ -167,7 +167,7 @@ function input(harness: HarnessKind, overrides: Partial<OpenSessionInput> = {}):
       local_only: true,
       max_workers: 1,
       max_requests: 4,
-      max_cost_microusd: 0,
+      max_cost_microusd: "0",
       spend_policy: 'free_only',
       allow_unknown_cost: false,
     },

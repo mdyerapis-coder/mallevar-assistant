@@ -40,7 +40,7 @@ This document maps the GitHub repository structure, branch relationships, and pu
 **Status:** Active Development  
 **Base:** `origin/main`  
 **Ahead:** 6 commits  
-**Current HEAD:** `1039590` (chore: stage Mallevar convergence work)
+**Current HEAD:** `94be019` (docs: add complete MALLEVAR deliverables)
 
 **Branch Metrics:**
 ```
@@ -51,13 +51,13 @@ This document maps the GitHub repository structure, branch relationships, and pu
 │ Files Modified              │ 74             │ ✅ Comprehensive   │
 │ Lines Changed               │ +5,612 / -1,691  │ ✅ Significant     │
 │ Untracked Files             │ 43             │ ✅ New additions   │
-│ Test Results                │ 97.8% pass rate  │ ✅ Healthy         │
+│ Test Results                │ 99.73% executed  │ ✅ Healthy         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Recent Commits:**
 ```
-1039590 chore: stage Mallevar convergence work — 74 files modified
+94be019 docs: add complete MALLEVAR deliverables — 8 comprehensive documents
 835b8ca qa: record command in local-acceptance receipt for release gate
 66d6da0 fix: add untracked webgpt_receipts.rs to .gitignore
 58b5724 deliver: policy set/show, FTS-aware backup, CAS publish on ingest
@@ -190,7 +190,7 @@ Files Modified: 74
 │  │  ├─ 58b5724 deliver: policy set/show, backup, CAS publish  │  │
 │  │  ├─ 66d6da0 fix: add untracked webgpt_receipts.rs          │  │
 │  │  └─ 835b8ca qa: record command in local-acceptance receipt │  │
-│  │  └─ 1039590 chore: stage Mallevar convergence work (new)   │  │
+│  │  └─ 94be019 docs: add complete MALLEVAR deliverables (new)   │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────┘
 ```
@@ -273,7 +273,7 @@ workflows:
 │  • Active Branches:              3                               │
 │  • Total Commits:                20+                             │
 │  • Files Managed:                200+                            │
-│  • Test Coverage:                97.8%                           │
+│  • Test Coverage:                99.73% (executed)                           │
 │  • Documentation:                Complete                        │
 │                                                                  │
 │  GitHub Account: mydierapis-coder                                │
@@ -287,7 +287,7 @@ workflows:
 |--------|-------|-------|
 | **Branch Activity** | High | 📈 Growing |
 | **Commit Frequency** | Regular | 📊 Stable |
-| **Test Coverage** | 97.8% | ✅ Strong |
+| **Test Coverage** | 99.73% executed | ✅ Strong |
 | **Documentation** | Complete | 📝 Maintained |
 | **Release Readiness** | Ready | 🚀 Prepared |
 

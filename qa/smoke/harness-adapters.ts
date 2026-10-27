@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const testHost: NativePermissionHost = {
-  async state() { return { policy_version: 0, state_digest: 'smoke' }; },
+  async state() { return { policy_version: "0", state_digest: 'smoke' }; },
   async prepareAction() { throw new Error('smoke.prepareAction not implemented'); },
   async verifyAnswer() { return true; },
   async recordNativeEvent() { /* noop */ },

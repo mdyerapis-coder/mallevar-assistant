@@ -94,7 +94,7 @@ try {
   await mkdir(rootA, { recursive: true });
   await mkdir(rootB, { recursive: true });
   const projectA = requestedProject
-    ? { id: requestedProject, name: "retrieval-disclosure", root: rootA, created_at: 0 } as Project
+    ? { id: requestedProject, name: "retrieval-disclosure", root: rootA, created_at: "0" } as Project
     : await cli<Project>({ type: "project_create", name: "retrieval-disclosure", root: rootA });
   const projectB = await cli<Project>({ type: "project_create", name: "retrieval-disclosure", root: rootB });
   assert.equal(projectB.name, "retrieval-disclosure", "project B carries the canonical title");

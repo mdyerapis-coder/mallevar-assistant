@@ -34,7 +34,7 @@ function makeDir(prefix: string): string {
 
 /** A host that never silently allows: `prepareAction` is the core's decision. */
 const host: NativePermissionHost = {
-  async state() { return { policy_version: 1, state_digest: 'd'.repeat(64) }; },
+  async state() { return { policy_version: "1", state_digest: 'd'.repeat(64) }; },
   async prepareAction() { throw new Error('CoreDeniedUnknownPermission'); },
   async verifyAnswer() { return false; },
   async recordNativeEvent() { /* noop */ },
@@ -48,7 +48,7 @@ function sessionInput(cwd: string, overrides: Partial<OpenSessionInput> = {}): O
     route: { connection_id: 'local', model_id: 'gpt-5.2-codex', harness: 'codex' },
     context: { digest: 'd', brief: '', constraints: [], excerpts: [], artifacts: [], unresolved_questions: [], originating_sessions: [] },
     policy: {
-      version: 1,
+      version: "1",
       project_id: 'proj-codex',
       allowed_connection_ids: ['local'],
       allowed_tools: ['read'],
@@ -58,7 +58,7 @@ function sessionInput(cwd: string, overrides: Partial<OpenSessionInput> = {}): O
       local_only: true,
       max_workers: 1,
       max_requests: 4,
-      max_cost_microusd: 0,
+      max_cost_microusd: "0",
       spend_policy: 'free_only',
       allow_unknown_cost: false,
     },

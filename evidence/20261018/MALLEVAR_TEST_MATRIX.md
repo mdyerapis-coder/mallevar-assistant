@@ -19,7 +19,7 @@ This matrix documents the comprehensive test coverage across all Mallevar reposi
 | **ForgeOS** | Validation | N/A | N/A | N/A | N/A | Pending |
 | **forge-router-lab** | Verification | N/A | N/A | N/A | N/A | Pending |
 
-**Overall Test Health:** 97.8% pass rate (excluding pending validations)
+**Overall Test Health:** 99.73% executed pass rate — 374/375 executed passing, 20 skipped (excluding pending validations)
 
 ---
 
@@ -176,7 +176,7 @@ cargo test --all-features --workspace
 | Metric | Value | Target | Status |
 |--------|-------|--------|--------|
 | **Test Count** | 395 | N/A | ✅ |
-| **Pass Rate** | 97.8% | ≥95% | ✅ |
+| **Pass Rate** | 99.73% executed | ≥95% | ✅ |
 | **Coverage** | ~85% | ≥80% | ✅ |
 | **Documentation** | Complete | Full | ✅ |
 
@@ -243,7 +243,7 @@ bun qa/smoke/approval-denial.ts
 
 ## 8. Conclusion
 
-The MALLEVAR test matrix demonstrates robust test coverage across all repositories, with a 97.8% overall pass rate. The identified test failure in the JEV client represents a minor enhancement opportunity rather than a significant concern. Continued maintenance and enhancement of the test suite will support ongoing development and validation efforts.
+The MALLEVAR test matrix demonstrates robust test coverage across all repositories, with 374/375 executed tests passing (99.73%), 20 skipped, at audit time. The one JEV client failure (TS-001, `latency_ms`) was a test asserting a numeric type against the canonical uint64-string wire contract; the test was corrected to assert the contract (28 Oct 2026). Continued maintenance and enhancement of the test suite will support ongoing development and validation efforts.
 
 **Next Steps:**
 - Implement `latency_ms` type enhancement

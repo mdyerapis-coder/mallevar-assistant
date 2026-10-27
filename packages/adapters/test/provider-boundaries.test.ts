@@ -28,13 +28,13 @@ function loopback(status = 200, body?: string, withholdHeadersUntilAbort = false
 function config(endpoint: string, capabilities = ["text", "usage"]): ConnectionConfig {
   return { id: "selected", protocol: "openai_completions", endpoint, allowed_projects: ["project"],
     models: [{ id: "fixture-model", context_limit: 4096, output_limit: 128,
-      capabilities: capabilities.map(name => ({ name, state: "qualified", implementation_version: "18.8.9", evidence_digest: "fixture-evidence", observed_at: 1791763200000 })) }] };
+      capabilities: capabilities.map(name => ({ name, state: "qualified", implementation_version: "18.8.9", evidence_digest: "fixture-evidence", observed_at: "1791763200000" })) }] };
 }
 function input(): WorkerProviderTurnInput {
   return { run_id: "run", request_id: "request", message_id: "answer", route: { connection_id: "selected", model_id: "fixture-model" },
     messages: [{ role: "user", content: [{ type: "text", text: "fixture input" }] }], required_capabilities: ["text"], tool_schemas: [],
     disclosure_digest: "digest", credential_lease_id: "private-lease", connection: config("http://127.0.0.1:1/v1"),
-    policy: { version: 1, project_id: "project", local_only: false, allowed_connection_ids: ["selected"], allowed_tools: ["read"],
+    policy: { version: "1", project_id: "project", local_only: false, allowed_connection_ids: ["selected"], allowed_tools: ["read"],
       read_roots: [], write_roots: [], network_destinations: ["127.0.0.1"], max_workers: 1, max_requests: 1,
       spend_policy: "free_only", allow_unknown_cost: true } };
 }

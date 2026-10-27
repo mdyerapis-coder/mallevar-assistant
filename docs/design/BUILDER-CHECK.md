@@ -1,4 +1,4 @@
-# Builder check — Ironbark Assistant design
+# Builder check — Mallevar Assistant design
 
 Date: 2026-10-12. Inline planning review, not an independent audit or production approval.
 

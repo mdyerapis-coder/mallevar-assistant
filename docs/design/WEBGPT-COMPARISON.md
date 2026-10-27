@@ -1,6 +1,6 @@
 # Codex WebGPT repository selection
 
-Date: 2026-10-12. Source comparison for the Ironbark Assistant design; no code merge, bridge deployment, login, provider inference, build, or test has occurred.
+Date: 2026-10-12. Source comparison for the Mallevar Assistant design; no code merge, bridge deployment, login, provider inference, build, or test has occurred.
 
 ## Decision
 

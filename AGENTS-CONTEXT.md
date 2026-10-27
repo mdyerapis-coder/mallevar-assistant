@@ -1,4 +1,4 @@
-# Ironbark Assistant — shared integration context for implementation agents
+# Mallevar Assistant — shared integration context for implementation agents
 
 You are implementing one task of the Ironbark Workstation Assistant plan. The parent (integration
 owner) owns the shared files and verifies + commits each wave. Read this, then your task brief.

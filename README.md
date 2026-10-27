@@ -1,8 +1,10 @@
-# Ironbark Assistant
+# Mallevar Assistant (formerly Ironbark Assistant)
 
-A standalone workstation assistant: one Rust core owns durable state, policy,
-scheduling and processes; Bun adapter workers carry provider and JEV transports.
-Adapters never become a second scheduler.
+Mallevar is the current product identity. This repository retains the original Rust crate, executable, package and data-path names for compatibility until their consumers and migration tests are verified.
+
+A standalone, local-first workstation assistant: one Rust core owns durable state, policy and process boundaries; Bun adapter workers carry provider and JEV transports. The C4 scheduler and live provider launch are **not yet qualified**; no Roots runtime implementation or release is implied by the name change. Adapters never become a second scheduler.
+
+See [Mallevar Assistant ↔ Roots integration boundary](docs/mallevar-roots-integration.md) for the proposed single-authority design and required acceptance tests. The OS convergence work remains in [the ForgeOS integration repository](https://github.com/mdyerapis-coder/ForgeOS/tree/work/ironbark-convergence).
 
 ## Components
 

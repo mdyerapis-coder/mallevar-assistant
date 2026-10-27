@@ -161,6 +161,33 @@ pub async fn serve(listener: UnixListener, nonce: String, store: Store, paths: c
 
 pub struct CoreClient { reader: tokio::io::BufReader<tokio::net::unix::OwnedReadHalf>, writer: tokio::net::unix::OwnedWriteHalf }
 impl CoreClient {
+    /// Authenticate one socket. A connection is either a command dispatcher (request) or an
+    /// event subscriber (subscribe), never both — the core rejects commands on a subscription
+    /// connection. Desktop/CLI clients therefore open a dedicated socket for each role.
+    async fn authenticate(paths: &crate::paths::RuntimePaths) -> Result<Self> {
+        let stream = UnixStream::connect(&paths.socket).await?;
+        if stream.peer_cred()?.uid() != current_uid() { return Err(CoreError::new("foreign_peer", "daemon UID is not authorized")); }
+        let (reader, writer) = stream.into_split();
+        let mut client = Self { reader: tokio::io::BufReader::new(reader), writer };
+        write_json(&mut client.writer, &ClientFrame::Hello { protocol: 1, session_nonce: paths.read_nonce()? }).await?;
+        match client.next_frame().await? { ServerFrame::Hello { protocol: 1 } => Ok(client), _ => Err(CoreError::new("hello_rejected", "core rejected authentication")) }
+    }
+    /// Open a dedicated event subscription socket and begin durable pull replay from `after_seq`.
+    pub async fn subscribe(paths: &crate::paths::RuntimePaths, after_seq: u64) -> Result<Self> {
+        let mut client = Self::authenticate(paths).await?;
+        write_json(&mut client.writer, &ClientFrame::Subscribe { after_seq }).await?;
+        Ok(client)
+    }
+    /// Read the next server frame; on a subscription socket this is the next `Event`
+    /// envelope. Blocks until an event arrives or the core closes the connection — a
+    /// silent core is the normal steady state, not an error, so there is no timeout here
+    /// (unlike `next_frame`, where a command reply is due). A closed socket reads as
+    /// `None`, which is the disconnect signal the caller reconnects on.
+    pub async fn next_event(&mut self) -> Result<EventEnvelope> {
+        let bytes = read_line(&mut self.reader).await?
+            .ok_or_else(|| CoreError::new("core_disconnected", "core closed subscription"))?;
+        match serde_json::from_slice::<ServerFrame>(&bytes)? { ServerFrame::Event { event } => Ok(*event), _ => Err(CoreError::new("unexpected_frame", "subscription socket returned a non-event frame")) }
+    }
     pub async fn connect(paths: &crate::paths::RuntimePaths) -> Result<Self> {
         let stream = UnixStream::connect(&paths.socket).await?;
         if stream.peer_cred()?.uid() != current_uid() { return Err(CoreError::new("foreign_peer", "daemon UID is not authorized")); }

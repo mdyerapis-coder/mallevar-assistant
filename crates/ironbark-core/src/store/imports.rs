@@ -18,15 +18,15 @@ impl ImportSource {
     pub fn document(path:PathBuf)->Self {Self{path,format:ImportFormat::Document}}
     pub fn native_transcript(path:PathBuf,origin:String)->Self {Self{path,format:ImportFormat::NativeTranscript{origin}}}
 }
-#[derive(Debug,Clone,Serialize,Deserialize,JsonSchema,TS)]
+#[derive(Debug,Clone,PartialEq,Serialize,Deserialize,JsonSchema,TS)]
 #[serde(deny_unknown_fields)]
-pub struct ImportFile {pub path:String,pub digest:Digest,#[ts(type="number")] pub bytes:u64,pub device:String,pub inode:String}
-#[derive(Debug,Clone,Serialize,Deserialize,JsonSchema,TS)]
+pub struct ImportFile {pub path:String,pub digest:Digest,#[serde(with="crate::contracts::wire::u64")] #[schemars(with="crate::contracts::wire::WireU64Schema")] #[ts(type="string")] pub bytes:u64,pub device:String,pub inode:String}
+#[derive(Debug,Clone,PartialEq,Serialize,Deserialize,JsonSchema,TS)]
 #[serde(deny_unknown_fields)]
 pub struct ImportPreview {pub digest:Digest,pub project_id:ProjectId,pub kind:String,pub files:Vec<ImportFile>,pub additive:bool,pub archived_only:bool,pub warnings:Vec<String>}
 #[derive(Debug,Clone,PartialEq,Serialize,Deserialize,JsonSchema,TS)]
 #[serde(deny_unknown_fields)]
-pub struct ImportReceipt {pub preview_digest:Digest,pub project_id:ProjectId,pub kind:String,pub origin:String,pub source_digest:Digest,#[serde(skip_serializing_if="Option::is_none")] #[ts(optional)] pub artifact_id:Option<ArtifactId>,#[serde(skip_serializing_if="Option::is_none")] #[ts(optional)] pub source_id:Option<String>,#[serde(skip_serializing_if="Option::is_none")] #[ts(optional)] pub connection_id:Option<String>,pub archived_only:bool,#[ts(type="number")] pub applied_at:i64}
+pub struct ImportReceipt {pub preview_digest:Digest,pub project_id:ProjectId,pub kind:String,pub origin:String,pub source_digest:Digest,#[serde(skip_serializing_if="Option::is_none")] #[ts(optional)] pub artifact_id:Option<ArtifactId>,#[serde(skip_serializing_if="Option::is_none")] #[ts(optional)] pub source_id:Option<String>,#[serde(skip_serializing_if="Option::is_none")] #[ts(optional)] pub connection_id:Option<String>,pub archived_only:bool,#[serde(with="crate::contracts::wire::i64")] #[schemars(with="crate::contracts::wire::WireI64Schema")] #[ts(type="string")] pub applied_at:i64}
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
 #[serde(tag="kind",rename_all="snake_case",deny_unknown_fields)]

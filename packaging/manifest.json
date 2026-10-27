@@ -1,0 +1,129 @@
+{
+  "schema_version": "1.0",
+  "package_name": "ironbark-assistant",
+  "version": "0.1.0",
+  "release": "1",
+  "arch": "x86_64",
+  "description": "Standalone workstation assistant: Rust core (SQLite, IPC, policy, contained workers) with an operator CLI and a Tauri desktop client",
+  "maintainers": [
+    "Mason <ironbark@llmclouds.au>"
+  ],
+  "licenses": [
+    "MIT"
+  ],
+  "source_urls": [
+    "https://github.com/mdyerapis-coder/ironbark-assistant/archive/refs/tags/v0.1.0.tar.gz"
+  ],
+  "install_prefixes": {
+    "local": "~/.local (packaging/local-install.sh; no root required)",
+    "system": "/usr (AUR PKGBUILD, RPM spec)"
+  },
+  "components": [
+    {
+      "name": "ironbark-core",
+      "type": "binary",
+      "path": "bin/ironbark-core",
+      "description": "Daemon, durable store, policy engine, process/network containment"
+    },
+    {
+      "name": "ironbark-cli",
+      "type": "binary",
+      "path": "bin/ironbark-cli",
+      "description": "Operator CLI; every subcommand prints exactly one JSON DTO on stdout"
+    },
+    {
+      "name": "ironbark-desktop",
+      "type": "binary",
+      "path": "bin/ironbark-desktop",
+      "optional": true,
+      "description": "Tauri desktop client of the same core; built and installed only with --with-desktop"
+    },
+    {
+      "name": "namespace-bridge",
+      "type": "internal-binary",
+      "path": "bin/ironbark-core",
+      "description": "Worker namespace runner; shipped as the ironbark-core binary's namespace_bridge subcommand, not a separate file"
+    }
+  ],
+  "desktop_files": [
+    "share/applications/ironbark-assistant.desktop",
+    "share/icons/hicolor/scalable/apps/ironbark-assistant.svg"
+  ],
+  "licence_files": [
+    "share/licenses/ironbark-assistant/LICENSE"
+  ],
+  "install_manifest": "share/ironbark-assistant/installed-manifest.json",
+  "build_dependencies": [
+    "rust (see rust-toolchain.toml)",
+    "cargo",
+    "bubblewrap",
+    "pkg-config",
+    "webkit2gtk-4.1 and javascriptcoregtk-4.1 (desktop client only)"
+  ],
+  "runtime_dependencies": [
+    "glibc",
+    "bubblewrap"
+  ],
+  "scripts": {
+    "install": "local-install.sh --prefix <dir>",
+    "dry_run": "local-install.sh --prefix <dir> --dry-run",
+    "check": "local-install.sh --check",
+    "uninstall": "local-install.sh --uninstall",
+    "post_install": "desktop-file-validate <prefix>/share/applications/ironbark-assistant.desktop; update-desktop-database -q <prefix>/share/applications 2>/dev/null || true"
+  },
+  "source_inventory": {
+    "required": [
+      "Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      "package.json",
+      "bun.lock",
+      "tsconfig.json",
+      "packaging/manifest.json",
+      "packages/contracts/src/generated.ts",
+      "packages/contracts/schema.json"
+    ],
+    "untracked_roots": [
+      "crates/",
+      "packages/",
+      "apps/",
+      "qa/",
+      "packaging/",
+      "tests/",
+      "integrations/",
+      "docs/",
+      ".github/",
+      ".cargo/"
+    ]
+  },
+  "release_gates": {
+    "note": "A release report binds these gates; a missing or failed required gate blocks the release rather than being reported as passed.",
+    "required": [
+      "cargo test --workspace",
+      "bun test packages/adapters/test",
+      "bunx tsc --noEmit",
+      "qa/smoke/crash-recovery.ts",
+      "qa/smoke/core-reconnect.ts",
+      "qa/smoke/backup-restore.ts",
+      "qa/smoke/worker-containment.ts",
+      "qa/smoke/local-acceptance.ts"
+    ],
+    "owner_approved_and_outstanding": [
+      "live provider launch and provider/JEV qualification smokes (H1-H8, W1-W3, J2-J3)",
+      "desktop surface and end-to-end acceptance (D2-D5)"
+    ],
+    "artwork_rights": "Original Ironbark imagery is approved for local use only; redistribution requires an explicit owner disposition before packaging is distributable.",
+    "local_qualification": [
+      {
+        "command": "bun qa/smoke/provider-roundtrip.ts",
+        "precondition": "a local OpenAI-compatible llama.cpp endpoint on 127.0.0.1:8091 (override with --port); loopback only, no paid route",
+        "proves": "a real streamed local answer, the effective route byte-identical to the requested one with exactly one request to the pinned endpoint, an abort that ends cancelled rather than succeeded, honest unknown billing, and a typed transport failure with no fallback"
+      },
+      {
+        "command": "bun qa/smoke/harness.ts",
+        "precondition": "a harness engine reachable with a real model (see the receipt for the exact profile/config used)",
+        "proves": "a real native harness turn through the core with a diff and check receipts, a denied out-of-scope write with no effect, pause/resume preserving the native session, and a cancel observed only after the process exits"
+      }
+    ]
+  }
+}

@@ -35,7 +35,7 @@ impl Default for BranchProvenance {
 pub struct MessageView {
     pub id: MessageId, pub origin_branch_id: BranchId, pub role: String,
     pub parts: Vec<ContentPart>, pub status: String,
-    #[ts(type = "number")] pub created_at: i64,
+    #[serde(with = "crate::contracts::wire::i64")] #[schemars(with = "crate::contracts::wire::WireI64Schema")] #[ts(type = "string")] pub created_at: i64,
     #[serde(skip_serializing_if = "Option::is_none")] #[ts(optional)] pub run_id: Option<RunId>,
     #[serde(skip_serializing_if = "Option::is_none")] #[ts(optional)] pub snapshot: Option<TurnSnapshot>,
     pub receipts: Vec<EventEnvelope>,
@@ -65,7 +65,7 @@ pub struct TurnDispatch { pub run_id: RunId, pub request_id: Uuid, pub branch_id
 pub struct RunResolution { pub run_ids: Vec<RunId> }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
-pub struct ConversationSummary { pub id: ConversationId, pub title: String, pub archived: bool, #[ts(type = "number")] pub created_at: i64 }
+pub struct ConversationSummary { pub id: ConversationId, pub title: String, pub archived: bool, #[serde(with = "crate::contracts::wire::i64")] #[schemars(with = "crate::contracts::wire::WireI64Schema")] #[ts(type = "string")] pub created_at: i64 }
 pub use exports::{ConversationExport, ExportFormat};
 
 impl ConversationService {

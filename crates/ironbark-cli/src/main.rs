@@ -8,13 +8,14 @@ use clap::{Parser, Subcommand};
 use ironbark_core::{
     conversations::{ExportFormat, RunResolution},
     contracts::{
-        ArtifactId, BranchId, ContentPart, ConversationId, CoreCommand, CoreReply, Digest, MessageId,
-        ProjectId, RunId, RoutePin,
+        ArtifactId, BranchId, CheckpointPhase, CommandResult, ContentPart, ConversationId, CoreCommand,
+        CoreReply, Digest, HarnessKind, MessageId, ProjectId, ProjectPolicy, RecoveryDecision,
+        ResultManifest, RunId, RoutePin,
     },
     error::CoreError,
     ipc::CoreClient,
     paths::RuntimePaths,
-    store::{backup::BackupService, imports::{ImportFormat, ImportSource}},
+    store::{backup::BackupService, imports::{ImportFormat, ImportSource}, preflight::MigrationPreflight},
 };
 use std::{io::Write as _, str::FromStr};
 use uuid::Uuid;
@@ -35,18 +36,26 @@ enum Command {
     Shutdown,
     /// Project lifecycle.
     Project { #[command(subcommand)] command: ProjectCommand },
+    /// Project policy: commit a new version, or read the latest committed one.
+    Policy { #[command(subcommand)] command: PolicyCommand },
     /// Additive, reviewed import (document or native transcript).
     Import { #[command(subcommand)] command: ImportCommand },
     /// Read back a durable CAS artifact (raw bytes on stdout).
     Artifact { #[command(subcommand)] command: ArtifactCommand },
     /// Snapshot-derived backup and the offline stopped restore.
     Backup { #[command(subcommand)] command: BackupCommand },
+    /// Offline original-preserving recovery image and migration inspection.
+    Migration { #[command(subcommand)] command: MigrationCommand },
     /// Conservative reference-aware CAS retention sweep.
     Retention { #[command(subcommand)] command: RetentionCommand },
     /// Published CAS capacity report.
     ObjectCapacity { #[arg(long)] project: String },
     /// Conversation tree operations.
     Conversation { #[command(subcommand)] command: ConversationCommand },
+    /// Run scheduler lifecycle (create, start, pause, resume, inspect, reconcile).
+    Run { #[command(subcommand)] command: RunCommand },
+    /// Run checkpoints (a CAS manifest link for one run phase).
+    Checkpoint { #[command(subcommand)] command: CheckpointCommand },
     /// Generic core command: the full `CoreCommand` as one JSON argument.
     #[command(name = "command")]
     Raw { #[arg(value_name = "COMMAND_JSON")] json: String },
@@ -56,6 +65,15 @@ enum Command {
 enum ProjectCommand {
     Create { name: String, #[arg(long)] root: Option<std::path::PathBuf> },
     List,
+}
+
+#[derive(Subcommand)]
+enum PolicyCommand {
+    /// Commit a new policy version, parsed from a `ProjectPolicy` JSON file. The
+    /// policy's own `project_id` must match `--project`.
+    Set { #[arg(long)] project: String, #[arg(long)] file: std::path::PathBuf },
+    /// Print the latest committed policy for a project.
+    Show { #[arg(long)] project: String },
 }
 
 #[derive(Subcommand)]
@@ -84,6 +102,14 @@ enum BackupCommand {
 }
 
 #[derive(Subcommand)]
+enum MigrationCommand {
+    /// Copy a stopped source into a new private raw recovery image.
+    Backup { #[arg(long)] destination: std::path::PathBuf },
+    /// Inspect without starting a core; a selected backup must already exist.
+    Preflight { #[arg(long)] backup: Option<std::path::PathBuf> },
+}
+
+#[derive(Subcommand)]
 enum RetentionCommand {
     Sweep,
 }
@@ -100,6 +126,63 @@ enum ConversationCommand {
     Regenerate { #[arg(long)] message: String, #[arg(long)] pin: String },
     Archive { #[arg(long)] conversation: String },
     Delete { #[arg(long)] conversation: String, #[arg(long)] run: Vec<String> },
+}
+
+#[derive(Subcommand)]
+enum RunCommand {
+    /// Create a queued run for a task. `--workspace` is folded into the task text as an
+    /// explicit note (the protocol carries `project_id` + `task` only).
+    Create {
+        #[arg(long)] project: String,
+        #[arg(long)] task: String,
+        #[arg(long)] workspace: Option<std::path::PathBuf>,
+    },
+    /// Transition a queued run to running. The pin flags build the `RoutePin`.
+    Start {
+        #[arg(long)] project: String,
+        #[arg(long)] run: String,
+        #[arg(long, default_value = "")] connection: String,
+        #[arg(long, default_value = "")] model: String,
+        /// omp | codex | opencode | claude | hermes | alphacode
+        #[arg(long)] harness: Option<String>,
+    },
+    /// Move a running run to paused.
+    Pause { #[arg(long)] project: String, #[arg(long)] run: String },
+    /// Move a paused run back to running.
+    Resume { #[arg(long)] project: String, #[arg(long)] run: String },
+    /// Request cancellation of a run.
+    Cancel { #[arg(long)] project: String, #[arg(long)] run: String },
+    /// Record an observed native process stop for a run.
+    ObserveStop { #[arg(long)] project: String, #[arg(long)] run: String },
+    /// Record that the native harness reported its own run complete.
+    NativeDone {
+        #[arg(long)] project: String,
+        #[arg(long)] run: String,
+        /// Native harness completion receipt text.
+        #[arg(long, default_value = "")] receipt: String,
+    },
+    /// Print the recovery report for a run.
+    Inspect { #[arg(long)] project: String, #[arg(long)] run: String },
+    /// Apply a recovery decision to an interrupted run:
+    /// accept-observed | resume-read-only | continue-from-checkpoint | abandon.
+    Reconcile {
+        #[arg(long)] project: String,
+        #[arg(long)] run: String,
+        #[arg(long)] decision: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum CheckpointCommand {
+    /// Capture a checkpoint for a run phase, parsing the manifest file as a
+    /// `ResultManifest`; prints the returned artifact id DTO.
+    Capture {
+        #[arg(long)] project: String,
+        #[arg(long)] run: String,
+        /// planned | pre-mutation | post-mutation | post-verification | pre-consequential
+        #[arg(long)] phase: String,
+        #[arg(long)] manifest: std::path::PathBuf,
+    },
 }
 
 // The core ID newtypes are transparent Uuid wrappers; parse from the CLI string form.
@@ -132,6 +215,21 @@ async fn run() -> Result<(), String> {
         return print_json(&report);
     }
 
+    // Offline preflight never connects, prepares paths, or starts a writable Store.
+    if let Command::Migration { command } = &args.command {
+        return match command {
+            MigrationCommand::Backup { destination } => {
+                let manifest = MigrationPreflight::create_recovery_image(&paths, destination).map_err(|e| e.code)?;
+                print_json(&manifest)
+            }
+            MigrationCommand::Preflight { backup } => {
+                let report = MigrationPreflight::inspect(&paths, backup.as_deref()).map_err(|e| e.code)?;
+                print_json(&report)?;
+                if report.writable_allowed() { Ok(()) } else { Err("migration_preflight_blocked".into()) }
+            }
+        };
+    }
+
     let mut client = CoreClient::connect(&paths).await.map_err(display)?;
     let id = args.request_id.unwrap_or_else(Uuid::new_v4);
 
@@ -140,8 +238,10 @@ async fn run() -> Result<(), String> {
         let mut after = *after;
         loop {
             let reply = client.request(Uuid::new_v4(), CoreCommand::Events { after }).await.map_err(display)?;
-            let value = value(reply).map_err(display)?;
-            let events: Vec<ironbark_core::contracts::EventEnvelope> = serde_json::from_value(value).map_err(display)?;
+            let events = match outcome(reply).map_err(display)? {
+                CommandResult::Events { value } => value,
+                other => return Err(format!("expected events result, got {}", serde_json::to_string(&other).map_err(display)?)),
+            };
             if events.is_empty() { break; }
             for event in events {
                 after = event.seq;
@@ -152,8 +252,8 @@ async fn run() -> Result<(), String> {
     }
 
     let command = args.command.build().map_err(display)?;
-    let reply = client.request(id, command).await.map_err(display)?;
-    emit(&paths, reply).map_err(display)
+    let reply = client.request(id, command.clone()).await.map_err(display)?;
+    emit(&paths, reply, &command).map_err(display)
 }
 
 impl Command {
@@ -169,6 +269,7 @@ impl Command {
                 C::ProjectCreate { name: name.clone(), root: root.to_string_lossy().into_owned() }
             }
             Command::Project { command: ProjectCommand::List } => C::ProjectList {},
+            Command::Policy { command } => command.build()?,
             Command::Import { command: ImportCommand::Preview { project, file, kind, origin } } => {
                 let format = match kind.as_str() {
                     "document" => ImportFormat::Document,
@@ -189,12 +290,29 @@ impl Command {
             Command::Backup { command: BackupCommand::Restore { .. } } => {
                 return Err("backup restore is offline and does not route through the daemon".into())
             }
+            Command::Migration { .. } => return Err("migration commands are offline and do not route through the daemon".into()),
             Command::Retention { command: RetentionCommand::Sweep } => C::RetentionSweep {},
             Command::ObjectCapacity { project } => C::ObjectCapacity { project_id: project_id(project)? },
             Command::Conversation { command } => command.build()?,
+            Command::Run { command } => command.build()?,
+            Command::Checkpoint { command } => command.build()?,
             // Handled directly in run() before build is reached.
             Command::Events { .. } => return Err("events streams directly; use the events subcommand".into()),
             Command::Raw { json } => serde_json::from_str(json).map_err(display)?,
+        })
+    }
+}
+
+impl PolicyCommand {
+    fn build(&self) -> Result<CoreCommand, String> {
+        use CoreCommand as C;
+        Ok(match self {
+            PolicyCommand::Set { project, file } => {
+                let raw = std::fs::read_to_string(file).map_err(|e| format!("read policy {file:?}: {e}"))?;
+                let policy = serde_json::from_str::<ProjectPolicy>(&raw).map_err(|e| format!("policy: {e}"))?;
+                C::ProjectPolicySet { project_id: project_id(project)?, policy }
+            }
+            PolicyCommand::Show { project } => C::ProjectPolicyShow { project_id: project_id(project)? },
         })
     }
 }
@@ -229,26 +347,117 @@ impl ConversationCommand {
     }
 }
 
-// `artifact read` returns base64 in the DTO; the raw bytes are what a caller wants on stdout.
-fn emit(_paths: &RuntimePaths, reply: CoreReply) -> Result<(), String> {
-    match reply {
-        CoreReply::Ok { value } => {
-            if let Some(data) = value.get("data").and_then(|d| d.as_str())
-                && value.get("digest").is_some() && value.get("bytes").is_some() {
-                    let bytes = STANDARD.decode(data).map_err(|e| format!("artifact base64: {e}"))?;
-                    let mut out = std::io::stdout().lock();
-                    out.write_all(&bytes).map_err(|e| format!("write artifact bytes: {e}"))?;
-                    out.flush().map_err(|e| format!("flush artifact bytes: {e}"))?;
-                    return Ok(());
+impl RunCommand {
+    fn build(&self) -> Result<CoreCommand, String> {
+        use CoreCommand as C;
+        Ok(match self {
+            RunCommand::Create { project, task, workspace } => {
+                // The protocol carries `project_id` + `task` only; a requested workspace is an
+                // explicit, bounded note appended to the task text.
+                let task = match workspace {
+                    Some(dir) => format!("{task}\n\n[workspace] {}", dir.display()),
+                    None => task.clone(),
+                };
+                C::RunCreate { project_id: project_id(project)?, task }
+            }
+            RunCommand::Start { project, run, connection, model, harness } => {
+                let harness = match harness {
+                    Some(kind) => Some(parse_harness(kind)?),
+                    None => None,
+                };
+                C::RunStart {
+                    project_id: project_id(project)?,
+                    run_id: run_id(run)?,
+                    pin: RoutePin { connection_id: connection.clone(), model_id: model.clone(), harness },
+                    native_session: None,
+                    artifacts: Vec::new(),
+                    recorded_pid: None,
+                    recorded_start_time: None,
                 }
-            println!("{}", serde_json::to_string_pretty(&value).map_err(display)?);
-            Ok(())
-        }
-        CoreReply::Error { code, message, .. } => Err(format!("{code}: {message}")),
+            }
+            RunCommand::Pause { project, run } => C::RunPause { project_id: project_id(project)?, run_id: run_id(run)? },
+            RunCommand::Resume { project, run } => C::RunResume { project_id: project_id(project)?, run_id: run_id(run)? },
+            RunCommand::Cancel { project, run } => C::RunCancel { project_id: project_id(project)?, run_id: run_id(run)? },
+            RunCommand::ObserveStop { project, run } => C::RunObserveStop { project_id: project_id(project)?, run_id: run_id(run)? },
+            RunCommand::NativeDone { project, run, receipt } => C::RunNativeDone { project_id: project_id(project)?, run_id: run_id(run)?, receipt: receipt.clone() },
+            RunCommand::Inspect { project, run } => C::RunInspect { project_id: project_id(project)?, run_id: run_id(run)? },
+            RunCommand::Reconcile { project, run, decision } => C::RunReconcile {
+                project_id: project_id(project)?, run_id: run_id(run)?, decision: parse_recovery_decision(decision)?,
+            },
+        })
     }
 }
 
-fn value(reply: CoreReply) -> Result<serde_json::Value, CoreError> {
+impl CheckpointCommand {
+    fn build(&self) -> Result<CoreCommand, String> {
+        use CoreCommand as C;
+        Ok(match self {
+            CheckpointCommand::Capture { project, run, phase, manifest } => {
+                let raw = std::fs::read_to_string(manifest).map_err(|e| format!("read manifest {manifest:?}: {e}"))?;
+                let manifest = serde_json::from_str::<ResultManifest>(&raw).map_err(|e| format!("manifest: {e}"))?;
+                C::RunCheckpoint {
+                    project_id: project_id(project)?, run_id: run_id(run)?, phase: parse_checkpoint_phase(phase)?, manifest,
+                }
+            }
+        })
+    }
+}
+
+fn parse_harness(raw: &str) -> Result<HarnessKind, String> {
+    Ok(match raw {
+        "omp" => HarnessKind::Omp,
+        "codex" => HarnessKind::Codex,
+        "opencode" => HarnessKind::Opencode,
+        "claude" => HarnessKind::Claude,
+        "hermes" => HarnessKind::Hermes,
+        "alphacode" => HarnessKind::Alphacode,
+        other => return Err(format!("run start --harness must be omp, codex, opencode, claude, hermes or alphacode, got {other:?}")),
+    })
+}
+
+fn parse_checkpoint_phase(raw: &str) -> Result<CheckpointPhase, String> {
+    Ok(match raw {
+        "planned" => CheckpointPhase::Planned,
+        "pre-mutation" => CheckpointPhase::PreMutation,
+        "post-mutation" => CheckpointPhase::PostMutation,
+        "post-verification" => CheckpointPhase::PostVerification,
+        "pre-consequential" => CheckpointPhase::PreConsequential,
+        other => return Err(format!("checkpoint capture --phase must be planned, pre-mutation, post-mutation, post-verification or pre-consequential, got {other:?}")),
+    })
+}
+
+fn parse_recovery_decision(raw: &str) -> Result<RecoveryDecision, String> {
+    Ok(match raw {
+        "accept-observed" => RecoveryDecision::AcceptObserved,
+        "resume-read-only" => RecoveryDecision::ResumeReadOnly,
+        "continue-from-checkpoint" => RecoveryDecision::ContinueFromCheckpoint,
+        "abandon" => RecoveryDecision::Abandon,
+        other => return Err(format!("run reconcile --decision must be accept-observed, resume-read-only, continue-from-checkpoint or abandon, got {other:?}")),
+    })
+}
+
+// `artifact read` returns base64 in the DTO; the raw bytes are what a caller wants on stdout.
+// Every other outcome prints its typed leaf value (the command tag is the request's own).
+fn emit(_paths: &RuntimePaths, reply: CoreReply, command: &CoreCommand) -> Result<(), String> {
+    let result = outcome(reply).map_err(display)?;
+    if let CommandResult::ArtifactRead { value: read } = &result {
+        let bytes = STANDARD.decode(&read.data).map_err(|e| format!("artifact base64: {e}"))?;
+        if bytes.len() as u64 != read.bytes {
+            return Err(format!("artifact byte count differs from its manifest"));
+        }
+        let mut out = std::io::stdout().lock();
+        out.write_all(&bytes).map_err(|e| format!("write artifact bytes: {e}"))?;
+        out.flush().map_err(|e| format!("flush artifact bytes: {e}"))?;
+        return Ok(());
+    }
+    if !matches!(command, CoreCommand::ArtifactRead { .. }) {
+        println!("{}", serde_json::to_string_pretty(&result.leaf_json()).map_err(display)?);
+    }
+    Ok(())
+}
+
+/// Unwrap the typed `CommandResult` from a reply, surfacing the typed error.
+fn outcome(reply: CoreReply) -> Result<CommandResult, CoreError> {
     match reply {
         CoreReply::Ok { value } => Ok(value),
         CoreReply::Error { code, message, .. } => Err(CoreError::new(&code, message)),

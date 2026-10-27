@@ -1,0 +1,152 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f1114;
+  --panel: #171a1f;
+  --line: #2a2f37;
+  --text: #e6e8eb;
+  --muted: #9aa1ab;
+  --ok: #3fb27f;
+  --error: #e05d5d;
+  --wait: #d9a441;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+}
+
+#nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 12px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+
+#nav nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+#nav a:hover {
+  background: var(--line);
+  color: var(--text);
+}
+
+#nav a.active {
+  background: var(--line);
+  color: var(--text);
+}
+
+.banner {
+  margin-top: auto;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.banner.ok {
+  background: color-mix(in srgb, var(--ok) 18%, transparent);
+  color: var(--ok);
+}
+
+.banner.error {
+  background: color-mix(in srgb, var(--error) 18%, transparent);
+  color: var(--error);
+}
+
+.banner.wait {
+  background: color-mix(in srgb, var(--wait) 18%, transparent);
+  color: var(--wait);
+}
+
+#app {
+  margin-left: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.pane {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.pane h2 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.pane dl {
+  margin: 0;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.kv:last-child {
+  border-bottom: none;
+}
+
+.kv dt {
+  color: var(--muted);
+}
+
+.kv dd {
+  margin: 0;
+}
+
+.pane ul,
+.pane ol {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.pane li {
+  padding: 3px 0;
+}
+
+.pane .error {
+  color: var(--error);
+}
+
+.events ol {
+  max-height: 40vh;
+  overflow-y: auto;
+  font-family: "Cascadia Code", "JetBrains Mono", monospace;
+  font-size: 12px;
+}

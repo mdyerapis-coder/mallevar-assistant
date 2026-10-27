@@ -1,6 +1,9 @@
 use rusqlite::Connection;
 use crate::error::{CoreError, Result};
 
+/// The implemented target, not a promised future migration.
+pub const CURRENT_SCHEMA_VERSION: u32 = 1;
+
 pub fn migrate(conn: &mut Connection) -> Result<()> {
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.pragma_update(None, "journal_mode", "WAL")?;

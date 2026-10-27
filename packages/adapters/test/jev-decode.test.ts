@@ -99,6 +99,43 @@ describe("runtime and provenance boundary", () => {
       expect(runtimeIdentity(facade, { status: "ok" }, p)).toBeNull();
     expect(runtimeIdentity({ llm: { ...facade.llm, mode: "openai" } }, { status: "ok" }, props)).toBeNull();
   });
+  test("observes_native_string_quantization_metadata_without_accepting_empty_identity", () => {
+    expect(runtimeIdentity(facade, { status: "ok" }, { ...props, model_ftype: "Q8_0" })?.model_identity)
+      .toBe(props.model_alias);
+    for (const model_ftype of ["", null, {}, 1.5]) {
+      expect(runtimeIdentity(facade, { status: "ok" }, { ...props, model_ftype })).toBeNull();
+    }
+  });
+  test("uses_the_facades_verified_local_runtime_without_contacting_the_stale_port", async () => {
+    const active = { llm: { ...facade.llm, port: 8092, base_url: "http://127.0.0.1:8092/v1" } };
+    const requests: string[] = [];
+    const transport: JevTransport = async (url) => {
+      requests.push(url);
+      if (url.endsWith("/api/status")) return Response.json(active);
+      if (!url.startsWith("http://127.0.0.1:8092/")) throw new Error("stale runtime");
+      if (url.endsWith("/health")) return Response.json({ status: "ok" });
+      if (url.endsWith("/props")) return Response.json(props);
+      return Response.json(completion());
+    };
+    const record = await client(transport).judge(input(), new AbortController().signal);
+    expect(record.state).toBe("available");
+    expect(record.choice).toBe("REVIEW");
+    expect(requests).toContain("http://127.0.0.1:8092/completion");
+    expect(requests.some(url => url.startsWith("http://127.0.0.1:8091/"))).toBe(false);
+  });
+  test("facade_cannot_redirect_judgments_to_a_remote_or_inconsistent_runtime", async () => {
+    for (const base_url of ["https://example.com/v1", "http://127.0.0.1:8092/v1", "http://user:pass@127.0.0.1:8091/v1"]) {
+      let downstream = 0;
+      const transport: JevTransport = async (url) => {
+        if (url.endsWith("/api/status")) return Response.json({ llm: { ...facade.llm, base_url } });
+        downstream++;
+        throw new Error("must not disclose to an unverified runtime");
+      };
+      const record = await client(transport).judge(input(), new AbortController().signal);
+      expect(record.state).toBe("unqualified");
+      expect(downstream).toBe(0);
+    }
+  });
   test("metadata_object_key_order_does_not_change_identity", () => {
     expect(runtimeIdentity(facade, { status: "ok" }, { ...props,
       default_generation_settings: { params: { lora: [], temperature: 0.8 }, n_ctx: 4096 } })?.digest)
@@ -115,8 +152,11 @@ describe("runtime and provenance boundary", () => {
     expect(record.score).toEqual({ type: "none" });
     expect(record.qualification_digest).toBeUndefined();
     expect(record.prompt_digest).toMatch(/^[0-9a-f]{64}$/);
-    expect(Number.isInteger(record.latency_ms)).toBe(true);
-    expect(record.latency_ms).toBeGreaterThanOrEqual(0);
+    // Wire contract: latency_ms is a canonical uint64 decimal STRING
+    // (Rust serde wire::u64; generated JudgmentRecord type), never a JSON
+    // number. Assert the canonical lexeme, not a numeric type.
+    expect(record.latency_ms).toMatch(/^(0|[1-9][0-9]*)$/);
+    expect(BigInt(record.latency_ms)).toBeGreaterThanOrEqual(0n);
     const body = JSON.parse(f.requests.find(r => r.url.endsWith("/completion"))!.init.body as string);
     expect(body.grammar).toContain('"ABSTAIN"');
     expect(body.prompt).toContain(text);

@@ -1,0 +1,40 @@
+/* Ironbark approved palette — exact values from the design direction.
+ * Every colour in the desktop resolves through these custom properties. */
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --canvas: #0e0c0b;
+  --surface: #161310;
+  --raised: #1e1915;
+  --hover: #29221c;
+  --selected: #40301f;
+
+  /* Lines and controls */
+  --line: #504236;
+  --control: #8a7868;
+
+  /* Text */
+  --text: #e6d8c8;
+  --secondary: #cbb8a4;
+  --muted: #b5a492;
+  --disabled: #82766a;
+
+  /* Signals */
+  --accent: #e09040;
+  --on-accent: #1a120c;
+  --focus: #ffc56a;
+  --warning: #ffc56a;
+  --success: #bcc492;
+  --error: #ee8e79;
+  --info: #a2bfd0;
+  --review: #c5acce;
+
+  /* Type */
+  --font-body: "Noto Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", "Fira Code", monospace;
+  --text-body: 14px;
+  --line-height-body: 20px;
+  --text-small: 12px;
+  --radius: 7px;
+}

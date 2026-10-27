@@ -44,7 +44,7 @@ async fn request(f: &Fixture, id: Uuid, command: &CoreCommand) -> CoreReply {
     }
 }
 fn ok(reply: &CoreReply) -> serde_json::Value {
-    match reply { CoreReply::Ok { value } => value.clone(), CoreReply::Error { code, message, .. } => panic!("expected ok, got error {code}: {message}") }
+    match reply { CoreReply::Ok { value } => value.leaf_json(), CoreReply::Error { code, message, .. } => panic!("expected ok, got error {code}: {message}") }
 }
 fn err_code(reply: &CoreReply) -> String {
     match reply { CoreReply::Error { code, .. } => code.clone(), CoreReply::Ok { .. } => panic!("expected error, got ok") }

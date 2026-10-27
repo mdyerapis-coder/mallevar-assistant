@@ -61,6 +61,72 @@ The local JEV client (`jev/client.ts`) is a judgment **transport**, not a judge:
   qualify a semantic domain. Domain qualification requires held-out
   positive/negative/ambiguous cases, which this client does not perform.
 
+### Local runtime discovery and holdout evaluation
+
+Calibration, holdout evaluation and actual judgments share the client's strict
+identity probe. It reads File Steward's `/api/status`, accepts only an exact
+`http://127.0.0.1:<numeric-port>/v1` local runtime, and checks that runtime's
+`/health` and `/props` against the facade's model path and active model ID.
+It never rewrites facade responses or substitutes another provider. The runtime
+base URL participates in the identity digest. Native llama.cpp quantization
+metadata may be a nonempty string (for example `Q8_0`) or an integer.
+
+The two-second end-to-end deadline, exact-code decoder, before/after identity
+checks and explicit invalid/unavailable/abstention states are unchanged.
+`available` is raw evidence, not permission or semantic qualification.
+
+Fixtures live under `packages/adapters/qa/fixtures/`; the generator is in the
+`jev/` subdirectory. Validation preserves each row's top-level class, rejects
+unknown classes, duplicate IDs and repeated content (including across files or
+splits). The dataset digest covers validated payloads, not just holdout IDs.
+**The existing generated fixtures are diagnostic only and are now rejected**:
+they repeat semantic inputs across splits, and independent review found inverted
+evidence/handoff labels. Regenerating the same rows does not repair those defects.
+Independent, reviewed, versioned scenarios are required before these commands
+can establish qualification:
+
+```sh
+bun packages/adapters/qa/qualification/jev/calibrate.ts --domain all
+bun packages/adapters/qa/qualification/jev/evaluate.ts --domain all --identity <observed-digest>
+```
+
+Freeze the observed digest before calibration/holdout. Available choices must
+match that digest. The evaluation output retains per-row IDs, classes, expected
+labels, choices, states and latency, without raw task text. A successful
+evaluator exit means it produced reports, not that domains passed. The core
+independently re-derives each qualification decision on persistence.
+
+On 2026-10-15 the actual client observed Qwen2.5-0.5B-Instruct-Q8_0 on
+`127.0.0.1:8091`, build `b11559-f2cc7282c`, and returned `REVIEW` for the
+synthetic review smoke in 432 ms. The subsequent full run measured 1,000
+calibration and 1,000 holdout rows before duplicate-content rejection was added;
+all five domains were blocked. Those outputs are quarantined diagnostic
+observations, not independent held-out estimates.
+
+The diagnostic run also exposed a broken TypeScript binomial CDF and a Rust
+tail-renormalization error. Both now accumulate the CDF in stable log space;
+independent exact-combinatorial reference cases cover both tails. Core
+persistence counts wrong answers as a subset of accepted choices, not twice.
+Old numerical bounds must not be reused.
+
+Calibration now emits a version-2 diagnostic artifact. Its `selection` records
+all attempts, raw available choices, final accepted/wrong counts, empirical
+error and each class's corresponding population. Equal raw-logprob groups are
+indivisible: fitting stops at the first unsafe full group, then recomputes
+counters from the final threshold. Missing/nonfinite/positive logprobs,
+nonchoices and unavailable states cannot be selected. Empty selection has a
+null threshold/error rather than an invented confidence.
+
+The artifact binds domain/version/prompt/dataset/calibration/runtime identity
+and its canonical content digest. Existing unreviewed v1 datasets have
+`review_freeze_digest: null`; this is not a signed or qualified calibrator.
+Auto-selection remains unavailable: evaluation still does not load/apply a
+verified frozen rule, whole-run identity continuity remains outstanding, and
+no domain is qualified. An isolated actual-CLI smoke with deterministic
+transport verified19 selected choices from22 attempts; it measured population
+semantics, not live model quality.
+
+
 ## Observed verification
 
 63 Bun tests pass across `provider-boundaries.test.ts` (31) and `jev-decode.test.ts`

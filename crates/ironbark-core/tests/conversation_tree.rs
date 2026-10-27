@@ -273,7 +273,7 @@ async fn source_revision_update_keeps_old_turn_citation_exact() {
         tx.execute("INSERT INTO chunks(id,revision_id,locator,content) VALUES('chunk-v1','revision-v1',?1,'original fixture text')", [locator_json])?;
         Ok(())
     }).await.unwrap();
-    let context = ContextPackage { digest: Digest::parse(&"e".repeat(64)).unwrap(), brief: "fixture excerpt".into(), constraints: vec![], excerpts: vec![CitedExcerpt { text: "original fixture text".into(), citation: Citation { source_id: "source-fixture".into(), revision_digest: Digest::parse(&"d".repeat(64)).unwrap(), locator } }], artifacts: vec![], unresolved_questions: vec![], originating_sessions: vec![] };
+    let context = ContextPackage { digest: Digest::parse(&"e".repeat(64)).unwrap(), brief: "fixture excerpt".into(), constraints: vec![], excerpts: vec![CitedExcerpt { text: "original fixture text".into(), citation: Citation { source_id: "source-fixture".into(), revision_digest: Digest::parse(&"d".repeat(64)).unwrap(), locator }, project_id: project, disclosure: DisclosurePolicy::LocalOnly }], artifacts: vec![], unresolved_questions: vec![], originating_sessions: vec![] };
     let turn = service.queue_turn(conversation, branch, Uuid::new_v4(), text("read fixture"), pin(), Some(context.clone())).await.unwrap();
     interrupt(&service, &turn).await;
     store.with_transaction(move |tx| {

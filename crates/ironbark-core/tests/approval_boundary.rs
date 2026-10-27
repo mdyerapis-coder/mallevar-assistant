@@ -13,11 +13,11 @@ fn fixture() -> (ActionSpec, ProjectPolicy) {
         "id": Uuid::new_v4(), "run_id": Uuid::new_v4(), "project_id": project,
         "kind": "publish", "canonical_args": {"artifact_digest": "a".repeat(64)},
         "scope": {"tools": ["publish"], "paths": []},
-        "destination": "https://allowed.example/upload", "policy_version": 1,
+        "destination": "https://allowed.example/upload", "policy_version": "1",
         "expected_state_digest": "b".repeat(64)
     }));
     let policy = parse(json!({
-        "version": 1, "project_id": project,
+        "version": "1", "project_id": project,
         "allowed_connection_ids": ["local"], "allowed_tools": ["publish"],
         "read_roots": [], "write_roots": [],
         "network_destinations": ["https://allowed.example/upload"],
@@ -31,9 +31,9 @@ fn grant(action: &ActionSpec) -> ApprovalGrant {
     let fields = serde_json::to_value(action).unwrap();
     parse(json!({
         "id": Uuid::new_v4(), "action_id": fields["id"],
-        "action_digest": action.digest().unwrap(), "policy_version": 1,
+        "action_digest": action.digest().unwrap(), "policy_version": "1",
         "expected_state_digest": fields["expected_state_digest"],
-        "expires_at": 2_000, "revoked_at": null
+        "expires_at": "2000", "revoked_at": null
     }))
 }
 
@@ -63,11 +63,11 @@ fn expired_revoked_and_old_policy_denied() {
     let issued = grant(&action);
     assert_eq!(PolicyEngine::check(&action, None, Some(&issued), &policy, 2_000), PolicyDecision::Deny(PolicyError::ExpiredGrant));
     let mut revoked = serde_json::to_value(&issued).unwrap();
-    revoked["revoked_at"] = json!(900);
+    revoked["revoked_at"] = json!("900");
     let revoked = parse(revoked);
     assert_eq!(PolicyEngine::check(&action, None, Some(&revoked), &policy, 1_000), PolicyDecision::Deny(PolicyError::RevokedGrant));
     let mut updated = serde_json::to_value(&policy).unwrap();
-    updated["version"] = json!(2);
+    updated["version"] = json!("2");
     assert_eq!(PolicyEngine::check(&action, None, Some(&issued), &parse(updated), 1_000), PolicyDecision::Deny(PolicyError::PolicyVersionMismatch));
 }
 

@@ -1,0 +1,1 @@
+{"main":{"identifier":"main","description":"Ironbark desktop window: the three typed core operations plus event listen for the live feed. No core:default, no shell, SQL, file, http, dialog or worker-launch permission.","local":true,"windows":["main"],"permissions":["allow-connect-core","allow-core-request","allow-subscribe-events","core:event:allow-listen"]}}

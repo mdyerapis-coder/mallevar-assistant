@@ -99,7 +99,7 @@ async function authenticated(): Promise<Wire> {
   assert.deepEqual(await wire.next(), { type: "hello", protocol: 1 });
   return wire;
 }
-function ok(reply: CoreReply): unknown { if (reply.type !== "ok") throw new Error(reply.code); return reply.value; }
+function ok(reply: CoreReply): unknown { if (reply.type !== "ok") throw new Error(reply.code); return reply.value.value; }
 async function stop(requestId = crypto.randomUUID()): Promise<void> {
   assert.deepEqual(JSON.parse(await cli(["--request-id", requestId, "shutdown"])), { shutting_down: true });
   assert.equal(await deadline(daemon!.exited), 0);
@@ -138,11 +138,11 @@ try {
   assert.match(project.id, /^[0-9a-f-]{36}$/);
   first.close();
   const subscriber = await authenticated();
-  subscriber.send({ type: "subscribe", after_seq: 0 });
+  subscriber.send({ type: "subscribe", after_seq: "0" });
   const committed = await subscriber.next();
   assert.equal(committed.type, "event");
   if (committed.type !== "event") throw new Error("missing committed event");
-  assert.equal(committed.event.seq, 1);
+  assert.equal(committed.event.seq, "1");
   assert.equal(committed.event.request_id, requestId);
   subscriber.close();
   const reconnect = await authenticated();
@@ -159,8 +159,8 @@ try {
   const cliProject = JSON.parse(await cli(["--request-id", requestId, "project", "create", "reconnect-boundary", "--root", temp]));
   assert.deepEqual(cliProject, ok(original));
   const status = JSON.parse(await cli(["status"]));
-  assert.equal(status.projects, 1);
-  assert.equal(status.last_seq, 1);
+  assert.equal(status.projects, "1");
+  assert.equal(status.last_seq, "1");
   const doctor = JSON.parse(await cli(["doctor", "--json"]));
   assert.equal(doctor.sqlite_integrity, "ok");
   assert.equal(doctor.foreign_keys, true);
@@ -174,16 +174,16 @@ try {
   assert.deepEqual(ok(await restarted.request(shutdownId, { type: "shutdown" })), { shutting_down: true });
   const replayStatus = ok(await restarted.request(crypto.randomUUID(), { type: "status" }));
   assert(replayStatus !== null && typeof replayStatus === "object" && "projects" in replayStatus);
-  assert.equal(replayStatus.projects, 1, "replayed shutdown must leave the replacement daemon serving");
+  assert.equal(replayStatus.projects, "1", "replayed shutdown must leave the replacement daemon serving");
   assert.deepEqual(await restarted.request(requestId, command), original);
   const projects = ok(await restarted.request(crypto.randomUUID(), { type: "project_list" })) as unknown[];
   assert.equal(projects.length, 1);
   assert.deepEqual(JSON.parse(await cli(["project", "list"])), projects);
-  const events = ok(await restarted.request(crypto.randomUUID(), { type: "events", after: 0 })) as { seq: number }[];
-  assert.deepEqual(events.map((event) => event.seq), [1]);
+  const events = ok(await restarted.request(crypto.randomUUID(), { type: "events", after: "0" })) as { seq: string }[];
+  assert.deepEqual(events.map((event) => event.seq), ["1"]);
   restarted.close();
   const cliEvents = (await cli(["events", "--after", "0"])).trim().split("\n").map((line) => JSON.parse(line));
-  assert.deepEqual(cliEvents.map((event) => event.seq), [1]);
+  assert.deepEqual(cliEvents.map((event) => event.seq), ["1"]);
   await stop();
   await rm(temp, { recursive: true, force: true });
   const observation = { protocol: 1, daemon: "actual prebuilt Rust binary", cli: "actual prebuilt Rust binary", projects: projects.length, committed_sequences: events.map((event) => event.seq), identical_request_replay: "same durable reply", mismatched_request_replay: "rejected", bad_nonce: "rejected", restart: "durable", sqlite_integrity: doctor.sqlite_integrity, private_permissions: "0700 directories / 0600 files and socket", temporary_state: "removed after smoke", credentials: "none" };

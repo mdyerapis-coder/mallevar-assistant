@@ -5,9 +5,11 @@ pub mod service;
 pub mod file_sink;
 
 use crate::contracts::{ActionSpec, ApprovalGrant, GrantId, ProjectId, ProjectPolicy, RunId};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
 pub struct TaskScope {
     pub read_roots: Vec<String>,
@@ -17,15 +19,15 @@ pub struct TaskScope {
     pub network_destinations: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
 pub struct TaskAuthority {
     pub run_id: RunId,
     pub project_id: ProjectId,
     pub owner_approval_id: GrantId,
     pub scope: TaskScope,
-    pub policy_version: u64,
-    pub expires_at: i64,
+    #[serde(with = "crate::contracts::wire::u64")] #[schemars(with = "crate::contracts::wire::WireU64Schema")] #[ts(type = "string")] pub policy_version: u64,
+    #[serde(with = "crate::contracts::wire::i64")] #[schemars(with = "crate::contracts::wire::WireI64Schema")] #[ts(type = "string")] pub expires_at: i64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

@@ -1,0 +1,1 @@
+835b8caec405b51f0c026e99ee527e2692571299 qa: record command in local-acceptance receipt for release gate compatibility

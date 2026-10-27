@@ -8,6 +8,8 @@ pub enum NamespaceBootstrap {
     /// Consumer MUST read fd3 then close it before starting any tool descendant.
     /// This is transport support, not qualification of that consumer's isolation.
     PrivateFd3(OwnedFd),
+    /// Core-owned duplex transport. Credentials remain a distinct EOF source.
+    ManagedWorker { credentials: Option<OwnedFd>, channel: OwnedFd },
     /// AlphaCode's managed daemon and ACP are direct siblings of the PID1 controller.
     /// Each receives its own bounded EOF-terminated identity pipe at fd4, not a shared stream.
     AlphaCodeSiblings { daemon: SiblingCommand, acp: SiblingCommand },
@@ -15,7 +17,7 @@ pub enum NamespaceBootstrap {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct RunnerConfig {
     pub executable: PathBuf, pub argv: Vec<String>, pub cwd: PathBuf,
-    pub env: Vec<(String, String)>, pub private_fd3: bool,
+    pub env: Vec<(String, String)>, pub private_fd3: bool, pub worker_channel: bool,
     pub siblings: Option<(PathBuf, Vec<String>, PathBuf, Vec<String>)>,
     pub bridge_port: Option<u16>,
 }
@@ -72,23 +74,27 @@ fn child_command(executable: &PathBuf, argv: &[String], cwd: &PathBuf, env: &[(S
     for (key, value) in env { command.env(key, value); }
     command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()); command
 }
-fn close_child_fds(command: &mut Command, preserve: Option<(RawFd, RawFd)>) {
+fn close_child_fds(command: &mut Command, preserve: &[(RawFd, RawFd)]) -> Result<()> {
+    // Allocate/duplicate in the parent, not in the post-fork signal-unsafe region.
+    let mut temporaries = Vec::with_capacity(preserve.len());
+    for &(source, target) in preserve {
+        let fd = unsafe { libc::fcntl(source, libc::F_DUPFD_CLOEXEC, 64) };
+        if fd < 0 { return Err(std::io::Error::last_os_error().into()); }
+        temporaries.push((unsafe { OwnedFd::from_raw_fd(fd) }, target));
+    }
     unsafe { command.pre_exec(move || {
-        // Duplicate first, so a source fd3/control fd cannot collide with its target.
-        let temporary = if let Some((source,_)) = preserve { let fd = libc::fcntl(source, libc::F_DUPFD_CLOEXEC, 64); if fd < 0 { return Err(std::io::Error::last_os_error()); } Some(fd) } else { None };
-        if let (Some(fd), Some((_,target))) = (temporary,preserve) && libc::dup2(fd,target) < 0 { return Err(std::io::Error::last_os_error()); }
-        let target = preserve.map(|(_,target)|target);
-        // Mark unrelated descriptors CLOEXEC, preserving Rust's exec-error pipe
-        // until exec rather than closing it and falsely reporting spawn success.
-        let mark = |first: u32, last: u32| {
-            if libc::syscall(libc::SYS_close_range, first, last, 4_u32) < 0 { Err(std::io::Error::last_os_error()) } else { Ok(()) }
-        };
-        if let Some(target) = target {
-            if target > 3 { mark(3, (target-1) as u32)?; }
-            mark((target+1) as u32, u32::MAX)?;
-        } else { mark(3, u32::MAX)?; }
+        // Preserve Rust's exec-error pipe until exec; never close it prematurely.
+        if libc::syscall(libc::SYS_close_range, 3_u32, u32::MAX, 4_u32) < 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+        for (source, target) in &temporaries {
+            if libc::dup2(source.as_raw_fd(), *target) < 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+        }
         Ok(())
     }); }
+    Ok(())
 }
 fn sibling(command: SiblingCommand, config: &RunnerConfig) -> Result<(Child, File)> {
     let mut pipe = [0;2]; if unsafe { libc::pipe2(pipe.as_mut_ptr(), libc::O_CLOEXEC) } != 0 { return Err(std::io::Error::last_os_error().into()); }
@@ -103,7 +109,7 @@ fn sibling(command: SiblingCommand, config: &RunnerConfig) -> Result<(Child, Fil
     use std::os::unix::fs::PermissionsExt;
     std::fs::set_permissions(profile,std::fs::Permissions::from_mode(0o700))?;
     child.env("ALPHACODE_HOME",profile).env("ALPHACODE_NO_TELEMETRY","1");
-    close_child_fds(&mut child, Some((input.as_raw_fd(),4)));
+    close_child_fds(&mut child, &[(input.as_raw_fd(),4)])?;
     let child = child.spawn()?; drop(input); Ok((child,output))
 }
 fn signal_namespace(signal: i32) { unsafe { libc::kill(-1,signal); } }
@@ -122,11 +128,16 @@ fn runner() -> Result<i32> {
     control.set_read_timeout(Some(Duration::from_secs(5)))?;
     let config: RunnerConfig = read_frame(&mut control)?;
     // bwrap opened host mount handles must not survive in the namespace controller.
-    unsafe { libc::syscall(libc::SYS_close_range,6_u32,u32::MAX,0_u32); }
+    unsafe {
+        libc::close(6);
+        if libc::syscall(libc::SYS_close_range, if config.worker_channel {8_u32} else {7_u32},u32::MAX,0_u32) < 0 {
+            return Err(std::io::Error::last_os_error().into());
+        }
+    }
     let mut bridge: Option<Child> = None;
     if let Some(port) = config.bridge_port {
         let mut command = child_command(&PathBuf::from("/opt/ironbark/namespace-bridge"), &["--bootstrap-fd".into(),"3".into()], &config.cwd, &[]);
-        close_child_fds(&mut command,Some((5,3))); bridge = Some(command.spawn()?);
+        close_child_fds(&mut command,&[(5,3)])?; bridge = Some(command.spawn()?);
         let deadline = Instant::now() + Duration::from_secs(5);
         loop {
             if std::net::TcpStream::connect_timeout(&format!("127.0.0.1:{port}").parse().map_err(|_| CoreError::new("containment_protocol","invalid loopback port"))?, Duration::from_millis(50)).is_ok() { break; }
@@ -148,8 +159,14 @@ fn runner() -> Result<i32> {
     let mut ack=[0];control.read_exact(&mut ack)?;
     if ack!=[2] {return Err(CoreError::new("containment_protocol","controller did not acknowledge namespace ownership"));}
     let mut command = child_command(&config.executable,&config.argv,&config.cwd,&config.env);
-    close_child_fds(&mut command, if config.private_fd3 { Some((4,3)) } else { None });
-    let mut worker = command.spawn()?; unsafe { libc::close(4); }
+    let mut preserved = Vec::new();
+    if config.private_fd3 { preserved.push((4,3)); }
+    if config.worker_channel { preserved.push((7,6)); }
+    close_child_fds(&mut command, &preserved)?;
+    let mut worker = command.spawn()?;
+    // PID1 must not keep a duplicate socket endpoint alive after worker exit.
+    drop(command);
+    unsafe { libc::close(4); libc::close(7); }
     control.set_read_timeout(None)?; control.set_nonblocking(true)?;
     let mut stopping: Option<(Instant,u8)> = None; let mut code = 0;
     loop {

@@ -5,10 +5,21 @@ Pinned source: 2a1d17156282e59fa811ceb58d9e28302d360fba (1.0.79)
 The maintained patch does not remove upstream copyright, bundled skill notices,
 or Cargo.lock dependency provenance. Dependency licenses remain those of their
 respective packages; building does not constitute a dependency/license audit.
+The dependency notice set is therefore derived from the shipped lockfile, never
+from `latest`: Cargo.lock as patched by the recorded series has SHA-256
+d3d1991553f4b791c30edabfbb478ae797509ea58a7d643bf453f47aecdfe737
+(`source.json.lock_sha256`), and the pinned upstream tree is
+e70d37fbbf3260e7b3029a738f5e8e31b3d87452 (`source.json.git_tree`). Any
+collector must resolve that exact locked graph under the recorded feature
+selection (`--no-default-features`) and reproduce each resolved crate's own
+licence text here before distribution.
+
 Redistributing a binary requires collecting notices for its actual locked build
 (including optional-feature selection). No binary was built or redistributed by
-this assignment. The upstream notice files present in this source are reproduced
-below; keep their original files in source distributions.
+this assignment; `binary_sha256` in `source.json` stays null until
+`build.sh` runs and records `build-artifact.json`. The upstream notice files
+present in this source are reproduced below; keep their original files in source
+distributions.
 
 Upstream LICENSE:
 MIT License

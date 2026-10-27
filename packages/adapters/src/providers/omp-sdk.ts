@@ -9,6 +9,7 @@ import { NO_AUTH_SENTINEL } from '@oh-my-pi/pi-ai/auth-retry';
 import { setTransports } from '@oh-my-pi/pi-utils/logger';
 import { CustomAdapters } from './custom.ts';
 import type { ConnectionConfig, ConnectionDescriptor, CoreEvent, ProviderAdapter, WorkerEvent, WorkerProviderTurnInput } from '../../../contracts/src/generated.ts';
+import { formatWireU64 } from '../../../contracts/src/wire.ts';
 import { ProviderRegistry } from './registry.ts';
 import { validateEndpoint } from './local.ts';
 
@@ -290,7 +291,7 @@ export class OmpProviderAdapter implements ProviderAdapter {
             ? { type: 'text_delta', message_id: input.message_id, delta } : { type: 'reasoning_delta', message_id: input.message_id, delta });
           pendingText.clear();
           const message = item.type === 'done' ? item.message : item.error;
-          const cost = reportedCost;
+          const cost = reportedCost === undefined ? undefined : formatWireU64(BigInt(reportedCost));
           const observedUsage = observedInput !== undefined || observedOutput !== undefined;
           yield event({ type: 'usage_observed', usage: { ...(observedInput === undefined ? {} : { input_tokens: observedInput }),
             ...(observedOutput === undefined ? {} : { output_tokens: observedOutput }), source: observedUsage ? 'provider' : 'unknown',

@@ -14,6 +14,7 @@ export interface JevClientOptions {
   max_in_flight?: number;
 }
 export interface RuntimeIdentity {
+  runtime_base: string;
   digest: string;
   model_identity: string;
   model_path: string;

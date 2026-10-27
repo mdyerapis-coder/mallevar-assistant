@@ -5,21 +5,559 @@
   "git_tree": "e70d37fbbf3260e7b3029a738f5e8e31b3d87452",
   "upstream_version": "1.0.79",
   "checkout": ".sources/alphacode",
+  "license": {
+    "spdx": "MIT",
+    "path": "LICENSE",
+    "sha256": "0987d065e3a91060bdc4ffc27e16d654eba9371362ff9137f39e46b8790a6bf4"
+  },
   "patch_series": [
     {
       "path": "patches/0001-ironbark-permission-boundary.patch",
       "sha256": "ac67492592cb7f72d836d4955e46df3a985939aabaaf8f673f9f78faa34e13a1",
-      "bytes": 134098
+      "bytes": 134098,
+      "files_touched": 103,
+      "adds_fail_closed_permission_gate": true,
+      "adds_ironbark_managed_mode": true
     }
   ],
-  "source_recipe_digest": "03058fab0522de6ed6e067322e23f677b0306ed50017ff39aece2f1f2c66c54e",
-  "digest_definition": "SHA256(ASCII(commit) || patch bytes || build.sh bytes || patched Cargo.lock bytes || rust-toolchain.toml bytes)",
+  "files_digest_definition": "pristine_sha256 = SHA256 of the file at the pinned commit (null for a file created by the series). patched_sha256 = SHA256 of the same path after applying the whole patch_series in order to the pristine checkout.",
+  "files": [
+    {
+      "path": "Cargo.lock",
+      "pristine_sha256": "9a27592942f3f93b0a23151acdae737887f40a6a8cab1dadc212328d6fd66864",
+      "patched_sha256": "d3d1991553f4b791c30edabfbb478ae797509ea58a7d643bf453f47aecdfe737"
+    },
+    {
+      "path": "Cargo.toml",
+      "pristine_sha256": "e66fcc03cc543bf48c92f6086cecae19e3107e46dc833432b59fe6902f796e90",
+      "patched_sha256": "946f8694a020622854e2d08847b052e4971b832a6eea30ccc32f7104a141e00c"
+    },
+    {
+      "path": "src/alphacode_app_core/agent/response_recovery.rs",
+      "pristine_sha256": "4fd7b123e0f8d30322cb9a965f5ac2ff7ca8637f56edae8c8007718a073b8a4f",
+      "patched_sha256": "b9aaf31d4c81f44501dc9aedc5aa5d90ffb0f3a502a71f941185138735388b21"
+    },
+    {
+      "path": "src/alphacode_app_core/agent/turn_execution.rs",
+      "pristine_sha256": "78bf440b6cb21b51952d4e0cc7b9f3aff3b48536f4358aa6d2021b68bba93800",
+      "patched_sha256": "703c396221772a201b338c441da458dda30709535672a8ed73dd9fda0d4d3721"
+    },
+    {
+      "path": "src/alphacode_app_core/agent/turn_loops.rs",
+      "pristine_sha256": "4e5f31edebce430f93f8a700d8bdf967b19155749bbaf24475312a637ae050df",
+      "patched_sha256": "946ac8fedb6bfa32829d3eb47e53b3b26d743898d27db95541cf1e967a05df0d"
+    },
+    {
+      "path": "src/alphacode_app_core/agent/turn_streaming_mpsc.rs",
+      "pristine_sha256": "2a549fa92463cb8c9c602c4646936bf58e7edbf17cf4abc4d21a1760eb018923",
+      "patched_sha256": "1a2cb5dd470d1a59e00c8b0b29b35261d1349f66c6959721549f3bef21bfa151"
+    },
+    {
+      "path": "src/alphacode_app_core/ironbark_permissions.rs",
+      "pristine_sha256": null,
+      "patched_sha256": "bfa458dbb4ec38a6937be972e6cc6b3528f1ffa283cadc247eef1bca57cdf647"
+    },
+    {
+      "path": "src/alphacode_app_core/mod.rs",
+      "pristine_sha256": "ecddd360f1d2277773f16e8b53c0b572c37b062b8336918ca1c6e52e23732a86",
+      "patched_sha256": "35668cba7e3ba8b9e79ebf85d56fd31de1a46e8fc9b3dad64f764a4b4ae91431"
+    },
+    {
+      "path": "src/alphacode_app_core/server.rs",
+      "pristine_sha256": "bd3bd995bffef5f3327946778f821481027205014c9c1baab5af064badb56497",
+      "patched_sha256": "3c1e0a85186b7ad7fca74a40bd42660587f3e90198a87262e1bdeff17a6002e1"
+    },
+    {
+      "path": "src/alphacode_app_core/server/client_actions.rs",
+      "pristine_sha256": "a2164fd8ffed668ab1d4f212419c28dea31e5289613bc2dd8f17769679cfb98e",
+      "patched_sha256": "be16294ef398a0a51a5382f2b7da9d62e9fe4b4ba4f8413dad2ab385b7a0fd36"
+    },
+    {
+      "path": "src/alphacode_app_core/server/client_lifecycle.rs",
+      "pristine_sha256": "5974ddb6fb977401b5fb535e47442e4fbce04fe378bd6ddbfc9169f9727665e6",
+      "patched_sha256": "dbbcd5f81a428bdad59c476284709d02c17c2eb4522d1259a3d8f6fa91fa17fd"
+    },
+    {
+      "path": "src/alphacode_app_core/server/debug.rs",
+      "pristine_sha256": "a6f765fa4b7356636176af4fb180e41fd683eceae6209e3b91ca363e227fa78e",
+      "patched_sha256": "44514c62a42b9270406a5b5e7d31761a49f052dd7b4956d4b71aa17d3ea37688"
+    },
+    {
+      "path": "src/alphacode_app_core/server/headless.rs",
+      "pristine_sha256": "6b95547a7c5914db3eeed16db151e1b34b40a674df3aa89fe2dfb95771e315de",
+      "patched_sha256": "3969a0ba32bac9a0bb9207b3f66c0297d2e33bca20883ccf61992306edf5d995"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/agentgrep.rs",
+      "pristine_sha256": "c02401ab57809d3fd2ef6606df176afa7ee35228d2bb4436fc064c3316c9bc3a",
+      "patched_sha256": "237d8d11c0cca143b06f7162d61f1bf977b434f0a0e476929ae55e75d96d1678"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/amass.rs",
+      "pristine_sha256": "f077bff4f8439982528e976d10b816353c74e06f82f917a2a5aa0778601304da",
+      "patched_sha256": "3c608cb31480967b970e7b0404068b7b34c46a581a8417fea8b1c7ced3874f69"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/ambient.rs",
+      "pristine_sha256": "8e962bb3cf276312b9b3a1a7ca24dae8c74ca32cbc161b4835826b6363799998",
+      "patched_sha256": "bcd5339b995377a33c3b855463fd093b0bcb583b642402c652eac9904c19c136"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/ambient/tests.rs",
+      "pristine_sha256": "0c12d3586fa418190ce822976bc3c80dd5d2c64769225fd6f486299e66d914a4",
+      "patched_sha256": "fd6dee16fd8a4085a62dd0608b0b26e69e8ef971a91ce5ec9d75c56fbbf6871b"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/anew.rs",
+      "pristine_sha256": "0ed5181dc51bd09e333c5ed02c440c3b58e6185999bf1e9a6e451c4d5facbc0e",
+      "patched_sha256": "18691c0917d7d388f3dee6d272d55469e35535cf140c9853201a3d4531f01491"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/apply_patch.rs",
+      "pristine_sha256": "5912f68d20d914e2ac55998c8398ce5138ce9ae34239b1779704977cf74d0bd6",
+      "patched_sha256": "78d7f5d7b726696edcef40c4fb8767c96260366a754010d536db8597796e1e40"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/assetfinder.rs",
+      "pristine_sha256": "cfd2e924f2a0fa1fc6e015af8c9af2a3a69852ff908928432e8211be961949b8",
+      "patched_sha256": "13c8406002e2466e26a939dc462587b59dfb070772ab02a1b4828f5fcc4a204f"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/bash.rs",
+      "pristine_sha256": "81524b52ca7f35ff96d69530f5fcd586809d1e7b387d07610756d18885e8faeb",
+      "patched_sha256": "04e8ce8770d73d7146277cca3fdb41245fe6ba6b49f319039df1c72c66b68ee2"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/batch.rs",
+      "pristine_sha256": "bc1fbf785a8077eb502b5c81777125fc2b29fe3fdd73d9d83644fc880d86469a",
+      "patched_sha256": "c3479bb4f9ffd74931a3688e2a0979b44a0748e74ede0c2420d57f341b0d9bc9"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/bg.rs",
+      "pristine_sha256": "e99d5829d9dfa35c134c060d1506ba1572a0c017fc553f2f9e3c5ca4ce34bc77",
+      "patched_sha256": "3c41bad35684a8b378fa84a72ffb4a593955e82e82660e26bbff1385ba19e2fe"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/browser.rs",
+      "pristine_sha256": "15c53ab14e5b66c95806ca998e119209247255eb87fc8fc959e9340677b2d90d",
+      "patched_sha256": "615b4db478f6424a42b9c56f79fd97419efc8904df2e48375184b864b543a2ce"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/cariddi.rs",
+      "pristine_sha256": "96f9ac85de9fc5526513f1e4dfec0979ddf8db4c7da5b076631f165577f095ba",
+      "patched_sha256": "2f8b72ad01b411139b592a7776b68b8b9a4172459a74d7cd86b366573c2e24a4"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/clipboard.rs",
+      "pristine_sha256": "d49f954d02a814cfbb689a62bfe4d95f542e774508f031e0753f1448defbd7e0",
+      "patched_sha256": "c91192b847cf4b029b45f43c479335ecfe9b65ce919325a24abb07b10e2dba6a"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/communicate.rs",
+      "pristine_sha256": "789a4c84d8a449eb5db48b388b283c599f9abc28006c1724bbe01eb8d94af370",
+      "patched_sha256": "db0e18f7ee235cb28264db28ea6b66d61feca92b29754276460c63d7f9590c62"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/communicate_tests/input_format.rs",
+      "pristine_sha256": "09aeb0715dff3b4a2d805604730215bc9b304539e4e309f9a15c056120f10233",
+      "patched_sha256": "10dc6601f887b5170851d24ea552f218d5bdfb644c9c0f50826479f3cf3d3e69"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/computer/mod.rs",
+      "pristine_sha256": "6d76616ea4267f554994b24ef3b2f734120f362ba8d87fbc52935ab2be956e98",
+      "patched_sha256": "e002d8c8c2343272e1df63a0fdfc1c2bf00bf049e90b934583971dcbb6f7bad0"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/computer/tests.rs",
+      "pristine_sha256": "fe63fed134aa5a5485273fc97085eb4bd4ad9bf7bb4b9ff8ee2161cfbb912251",
+      "patched_sha256": "b3ba0893d73f72ff89633abd8bdf67e71b9d304bdc193e853991da6bda2d5c2d"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/conversation_search.rs",
+      "pristine_sha256": "f21aa9e9b045ddfa103fea6339839094ffc2287775215e7f63def5bcd384aaeb",
+      "patched_sha256": "75346524e1303087e7208a71c584e4a660fc768208281eb980768363bb4984a9"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/corsy.rs",
+      "pristine_sha256": "28cfdfbfe54f91723a6de12fbff1b615c5b15041906862ceac7c22693763df27",
+      "patched_sha256": "b253e8c84d9f62d1630a2ee0be3aed1485890cadde79ba4168bafb830b61342d"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/crlfuzz.rs",
+      "pristine_sha256": "bb685b04e2c042a074090fc2750982f43fbf286a9aca76e495873afd34b4c050",
+      "patched_sha256": "10d48285ee2116a0b4c8961e1e439536e4ac9baccb4b1daf31482ce5b70ea319"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/cron.rs",
+      "pristine_sha256": "b1704cc5826053a18a7c53205e97deb174aa1f6584ad5439b63d756e24694e74",
+      "patched_sha256": "5962fce1dfdf374cd1b3f24729080fb842cf4ff25928084a19a25da6a47aa222"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/ctf_tools.rs",
+      "pristine_sha256": "c2fa2bbb963a4b8bec5242f6094009fa33bcfbcd1805824e7f4efe23e7d8761e",
+      "patched_sha256": "b73f67105d62d2355934bcf5be8d7da49abace55c02d57f6be33d1c7fdbb2c31"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/dalfox.rs",
+      "pristine_sha256": "bb64fa063fc2d981cc6acb23203f68b22a202ddec2bdd50a29d249e87b216981",
+      "patched_sha256": "260df6c97d5bbbee36dd5df651e6641e7e170df85795818b05bd0fda47504a77"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/debug_socket.rs",
+      "pristine_sha256": "ed91dbc4022f523483afe62344abbe7d2b34cf6fcfaf02cbaf24274712ee4e4f",
+      "patched_sha256": "fc1dc79373d8917cd30fe3b3432c5bd5c06d288ccb796889d08d971d389f4769"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/desktop/mod.rs",
+      "pristine_sha256": "a881cb8bcf21581381d4e00212a7f5ba095e8f07dc72eebf97ffa19c1b0d4108",
+      "patched_sha256": "91ee826c52cf76a302c72db974a244758c86828c13487c58b6fef332b122f2f0"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/discover.rs",
+      "pristine_sha256": "a1e17f9fdf6f94cdb54be54a383df5633a6a2d64132ba3c8266514f3c1178306",
+      "patched_sha256": "5b15a08032e25be25103ce70858c7fb60a61822cebcb0e3c5851620763f00a9d"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/dnsx.rs",
+      "pristine_sha256": "290278c49c7fc25100e44f4e86f5c4b61f58cf3bb045436c1b6e45b1d3307154",
+      "patched_sha256": "1665dc968623ced339d3a3ba6ea8455169df7ae9f95da8f52964781e0d5117c3"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/doctor.rs",
+      "pristine_sha256": "7f8f30349b395ed72611a4d0626bbe6c83511f604fb6cef343b5bf55a0b8ed8b",
+      "patched_sha256": "1f6f66b36ef1f8d9dafd0cad9dc0751ed87f082ef37982fed34e4d922bc03f18"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/edit.rs",
+      "pristine_sha256": "6e9a6ec07087527af5002fea98f8590beaf3728806473124b3b66e009251fda0",
+      "patched_sha256": "acd4bc640afb05519368aad5fc56811af3f18c9ce9771ad40649686a63c43108"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/feroxbuster.rs",
+      "pristine_sha256": "861a880e2bebc12f2b33c2cfb073fb46dc1c08a05cd371cee1911b42d4c9d416",
+      "patched_sha256": "cf1019af4535e9924ca5155880e163f9a384da966893848fc091f579c31a1396"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/ffuf.rs",
+      "pristine_sha256": "e531a74e1fb904f3f2a7cffce348ddcde85768c00bdcdedaed1d80a87cbda8c8",
+      "patched_sha256": "912f5c6eddcb4804f692e34c58acdb13e4b0a8dc733d11fababdf6d3b0bb3ec9"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/gau.rs",
+      "pristine_sha256": "2afe86d1ae06f6b3c816a3c8b488e8e7e6e367419533f218fba605beeac7cb75",
+      "patched_sha256": "43af8d74d707b822251f2fe205ca71ea58b61936e91528594dc057ec5baee758"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/gf.rs",
+      "pristine_sha256": "2a76dc18d1a1daeb20012e42992222ed2cdaa3e3f7901ddc5e5e64d65770d20a",
+      "patched_sha256": "d11e9adc5885d2d521e2c5d8fb6eec7ed04acfe10082672480374ec654b6d08a"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/gmail.rs",
+      "pristine_sha256": "485bad1faa4a3e9e78069f662c8689c3ebf9a34c905eac74406539620abf5019",
+      "patched_sha256": "6c14e4c7aab22fab74ffecd648010805732fa83d4f6c8d44e265a29aa448408a"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/goal.rs",
+      "pristine_sha256": "6842781f72c2a146be215b66c1f58cbcacdf183fbc991eb920b725d81c6bf850",
+      "patched_sha256": "eaedeb081314fd145706d8de53945a252f2f994ffa1b2d7116a33b675123982d"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/gobuster.rs",
+      "pristine_sha256": "99e3f1bda253d93945684a32a7279e6c75b0e92a652768ab67a50cd288e5a3a9",
+      "patched_sha256": "9606980386cffa7c91f3aeeac89422708f2fbffa3a3f0710ba4f3fa8dbdabf96"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/gospider.rs",
+      "pristine_sha256": "df1ede034d3ee7618cf7f720e29c48cc37be37e231f3d90ebd2d044281aa8a92",
+      "patched_sha256": "dedbca6cb7eb71822645bdbb6ac0b4d16d2d4ff87e1bdfaf2629fbaa4975630f"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/hakrawler.rs",
+      "pristine_sha256": "1f87fee5c23af8d00c5313f00a24112c1edf7b6760eb6a01ad6e5f6b616d1e83",
+      "patched_sha256": "00f3eac5df984a6dd4dd2a262d34c9b5a98f267e79beee5c3729160ad97a7aac"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/httpflow.rs",
+      "pristine_sha256": "97e3bcccf9802f37cd96724cb4083292b98d8ab7ec73726bd5c46facb2d086e8",
+      "patched_sha256": "595256b2b5b8535bee8f93827db6a6ae53cddc7525b8aa36eff72147f512ad16"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/httprobe.rs",
+      "pristine_sha256": "68420ae7e4331350a7bb941c5be89e0036b245b39329f253f5e5cb7abc52da9b",
+      "patched_sha256": "14b3f391578aeeac994501fc8c3de07fb566246b3b84bb0238dba56cb295b677"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/httpx.rs",
+      "pristine_sha256": "3a9ee0c535523ce520ebb8b2d0905adb26bf44f81d2990ea0cf0dad80ee808da",
+      "patched_sha256": "ee852e0a3ddfa9f2902a16b1c14b504e798d5bf0038168f3a761587c88b3ecbe"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/invalid.rs",
+      "pristine_sha256": "541b2771962925e88f1c077a7e723daaf90e5e22fc494f900c66654fa262e784",
+      "patched_sha256": "4b7edc9c00d9fbcba3a444c42b4afdf41c8b63743748a46f3246c8f839dbd9b1"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/ironbark_permission_tests.rs",
+      "pristine_sha256": null,
+      "patched_sha256": "60194aebeaef7c7d9933cef5459b10264ae641a58a94fba15c7d0ecfa7aa27f1"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/jwt.rs",
+      "pristine_sha256": "7017b102434eb92dce27289e574d204fef90b6719f3301e84f6c82c77b8e2c6e",
+      "patched_sha256": "8d1b2ae4552ba0d97fd66b481c5e9e04e001f4ea88b6c46981d8cf161cf732d3"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/katana.rs",
+      "pristine_sha256": "82c019f7f0e512331fcfb49be221d85ad0ccf69a343be7741f036465fa5dc910",
+      "patched_sha256": "ea041ab6716ab5b6b3c5f3ec18ec4d01bad7ed750eda5f5cfda479783c7b30a1"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/kxss.rs",
+      "pristine_sha256": "db9379a416ea40fe351dd1f24ceef26e666e6ef9f0e9c642001675e147b2771f",
+      "patched_sha256": "61f002131687bc93b993c92fe7a6f76a984023ce9f73f6cf954beb2e5f94cc47"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/ls.rs",
+      "pristine_sha256": "efe1904e9777d33e9a708b88f745f6391baadd4c550d04aba8a2ef76af603b4a",
+      "patched_sha256": "bdc08e8a9e58595d07329c42b0f0ca6b0419abb473d1a44254e867ca0cf90369"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/mcp.rs",
+      "pristine_sha256": "75e42b908d449609b0ce1d3d609b499a21f119b95060171fc4690f09c0b09bd1",
+      "patched_sha256": "c302abc6af9e4a64795875e2feb563b36e9af240dd2f39fd15f7916510b00db4"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/meg.rs",
+      "pristine_sha256": "f9b1b3464237498755102753466935f66711584edc8a63cc5bec0526026fc44c",
+      "patched_sha256": "9efc6e4c759e1646d9306785113044894209756770519dd39cd14d27d8f97cfa"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/memory.rs",
+      "pristine_sha256": "a617b27a95801c6c5e733d071bfbe20458e8f0bd1b18073e7f6f064168a0c1ac",
+      "patched_sha256": "23e0e8c5643636d86191bed75bf68275a6ea003550ea0af04d37e0783a891470"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/mod.rs",
+      "pristine_sha256": "bd06190cb9cab83ececb8a093b40c06c7b3e86e82dbff788dce5c88d7544eb11",
+      "patched_sha256": "c33e344b08865a9d899b73df44945b5ce0247922847b5dc1b0b8e862ee3f0f4d"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/multiedit.rs",
+      "pristine_sha256": "54a95c463618f40675cd7dde886ad74f38e5d9c965397d0295e3cce0df0a43f3",
+      "patched_sha256": "a909bad8baf30931700125349e7bc62a3712d1d8a45bced23ef75943f738759d"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/naabu.rs",
+      "pristine_sha256": "891839a86e491fef7e2481bdcb8990771867c0fce522eae82c7ab42f3373e520",
+      "patched_sha256": "3f03388a0535bc1ef5b8b230b1eec9a8f1b964615689ed218980c134e6b0c8eb"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/nikto.rs",
+      "pristine_sha256": "3c3ca40e605516a8294a76ef9648c284fbb182c5a3d5d08ee2f18d7746616dd7",
+      "patched_sha256": "68168ab437e4b3437e3a8c8d8b5b8601198f9562734079b8177220a88af84ebb"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/nmap.rs",
+      "pristine_sha256": "2ed4163120120f62153197b11e1a95f022bdb58f4cde1d25be24923c230abd64",
+      "patched_sha256": "a3daf4c1130b0375db1051d6c1c23748491bd9a8fddf81b961ddc19cf76b55bd"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/nuclei.rs",
+      "pristine_sha256": "1d234897b4ec50d06e93887ae146289358b678e7fd33903be9a3130dcd32fc15",
+      "patched_sha256": "a8a7d7806cb306b3f5490f65d316a849e9f35879ff0095c8012555390b9e2b21"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/open.rs",
+      "pristine_sha256": "5aaa2623f6b8a122a8e16e3fd8db1b9190cef4abb5636021bf7e96c919affdef",
+      "patched_sha256": "a6632e718da635b2f6d9c9d0640bce9cbea113e950febef4f74e0337bcbce902"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/patch.rs",
+      "pristine_sha256": "884b67660146f0d36ec0248ffc9e75342f893364e9dd952971da95ea60ac8655",
+      "patched_sha256": "53e7595f11b6c0a44bc0c3141f4c34c8b993828e1e9ddb02a03c90a3950b018a"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/plan.rs",
+      "pristine_sha256": "41637bdc01ff45bda129a5b853b982c7125310c59a5a4a0922ba628dbf24a6d0",
+      "patched_sha256": "c9ff96eab2a8fc43d6e7a6218ce1c1d3ed64da4e8ceba4d60addefcdf9f630cf"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/qsreplace.rs",
+      "pristine_sha256": "e7fd27b16a95d5e135b699725e1675112d0e5bb141abe7e7ae9616b9c6182eb9",
+      "patched_sha256": "efbaddbe1afa6df3d5a3446422b2a4dd9628d426ffefbe38fae2a5225f1295b6"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/read.rs",
+      "pristine_sha256": "29a339fa8f8b71709761e3244ecd8dbe0c86638f1683639270823a6fc3cf691e",
+      "patched_sha256": "4cce2e360ac26ac60f426735f1c6968a1afa5866b300dc9329d07242d249bcd9"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/read/tests.rs",
+      "pristine_sha256": "41806f1817c42eba9e071ec762eda4af6e02284cde55e4f94fade0e63be3d8c0",
+      "patched_sha256": "6ff082108124bf1106e2b94d363381318b67c4569dea6f14c2d235d70e4ba7d6"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/scrapling.rs",
+      "pristine_sha256": "c0500b5ab5d3224fe5c3c4fb116b27f34a9bb43ebd704c1a0b2e6de6352a8137",
+      "patched_sha256": "c0a63e15d714298e5e38eb94dfade5fadcbb758adf68fc8bf9736d54a694ee13"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/self_improve.rs",
+      "pristine_sha256": "4137a42a04c3c85d8ac1e675ae08e876e6a505746b1c59a10fc86cf6b8602db8",
+      "patched_sha256": "7e42e76771879c1367187a0dff751eb6a2c6ddb8a76e71ae97cc9e010295bcc4"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/selfdev/mod.rs",
+      "pristine_sha256": "63ec47277b8b4bef05bc204cfb02872b4262f5ca902c7881aff3d3bb9ea771b1",
+      "patched_sha256": "876aea225e0bbb901c1bad0285186e9692e9b3394d06be1ea25eca4449e14cbb"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/selfdev/tests.rs",
+      "pristine_sha256": "d66565825d7e9bf294716d128a070246e794cd441b88d786a4b57d6dc8073bda",
+      "patched_sha256": "bbdf0cc6d41f5aa771c6fe1dc1220f7ee512460b97062e8437fcbe143f851d05"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/session_search.rs",
+      "pristine_sha256": "ca157dad982e1260b3be987ddf7c7d19468fa2210e374a171b2d91e08da8a8c0",
+      "patched_sha256": "9f87fd38ad4266745d2c68321b7613508c83d8ad21ba985b92f695a3216b61b2"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/side_panel.rs",
+      "pristine_sha256": "bd82fcf3153edd511fb09d244763ed5727ed065ed723f9defdb8edd9975a768f",
+      "patched_sha256": "ce4f5e6529614d5000efd190efc0ff372ae6aaa4220e992a679607c6853f9f35"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/skill.rs",
+      "pristine_sha256": "e5e9df65993528082ea40fa2ed0a3deee209464c22e532886c5c7e1e2c7c0afb",
+      "patched_sha256": "54804ed29b2e8dd4687419200cff7d8206c25e4aaf549ddbc31c64437898718d"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/sqlmap.rs",
+      "pristine_sha256": "f92ccfe34ae46bb5dc828be0809996a2ee68695a37b352b3c3b517d1d03b2b07",
+      "patched_sha256": "857ae418d26e099f4f25f686375b60d4b136e476700bafe4989140949c29be72"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/subfinder.rs",
+      "pristine_sha256": "9d0b964d4194ff5059080b129d06cbb03ea59deb991dcf1c9f8c6b4d1fdb301b",
+      "patched_sha256": "4e20c86572c0990cc570f1c3961cf2098b5fe754e86f44aac685ca30e2d763ec"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/tests.rs",
+      "pristine_sha256": "8e52e9bf028657f3e42c6d1339e5b7ce41f4cbe65a0a9a5a2e5052957b1fbdcd",
+      "patched_sha256": "1562ba28c920488db18f53d914020abd935f34310c9ebdfafdaa8fe6f036a67a"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/todo.rs",
+      "pristine_sha256": "23b078f3e2ddeb642ce97ef02bfe5dbee6fb2de38f3a8a464bf63f14b036f1d8",
+      "patched_sha256": "33a1f5a91ee5bf1273ffa7fa5fbd229711955abe1f5acec56099e660c11108be"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/unfurl.rs",
+      "pristine_sha256": "4ca5506689bf10c9afdb7b35b41d8b2ee88485909749aa288eced6e4f2aed05d",
+      "patched_sha256": "7497eacd203d99770f037a1a0375283bb49fe14f1b7a047828412b6fd48a28a6"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/waybackurls.rs",
+      "pristine_sha256": "ffb48612e04b27b0cd98b1c3faf2aa80c3b004c77c83068c16762d35bc33ccac",
+      "patched_sha256": "66b1e4900cbbd78eb7cb3cb89df06d813a02e6b13cec058fba6761c4ead49983"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/webfetch.rs",
+      "pristine_sha256": "386fc99635eda636f1580e79037c8ef00107a34cca530f6ebf38c0bb3e1a2b7f",
+      "patched_sha256": "86e4074e4dd8cf66261153a370a0cb3f5bb71e43b59eee68f884ee4b3c4a4096"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/websearch.rs",
+      "pristine_sha256": "80feb2a691bd27f2d26731f841184b2c890ab5f0766c08ec361ca984b18ee666",
+      "patched_sha256": "844346aaab3b7d7fd0d20d32016de043bb06fa8f18e2f7c547757489b09af1f7"
+    },
+    {
+      "path": "src/alphacode_app_core/tool/write.rs",
+      "pristine_sha256": "499398df7b7d4400c5dd1a894021ae3a040f662a35644cfa8642f29955f959a9",
+      "patched_sha256": "39d801d0bcb04456aadcc92cebca17975f4a39b40e8ffe87d744ce183f923635"
+    },
+    {
+      "path": "src/alphacode_base/hooks.rs",
+      "pristine_sha256": "88149d31248856ada956b6fa1acbcdb1e0613fe1a5b1a8b197f870ce04fbb804",
+      "patched_sha256": "d139d8043da316e6d73427bb1dd8261f90990c8ba7ce9729da223f02107cd255"
+    },
+    {
+      "path": "src/alphacode_protocol/mod.rs",
+      "pristine_sha256": "65b2e8f5a19e0be2d8dbe5cfdddf542e4e6cde6061b2a4d02cfcd752df04b7a7",
+      "patched_sha256": "1ad70e861c796f16dd3a26078b09722dd96b3a4e9da08c4442db86af7978e48d"
+    },
+    {
+      "path": "src/alphacode_protocol/wire.rs",
+      "pristine_sha256": "5e2a92471d206f2e28d3c786a16518740953fa3925cb0cc872514ff90fd419f9",
+      "patched_sha256": "dd65aae9b0b944d51f2922e429d6e033b8ce0ca2a4c1f906170b79074cce71d8"
+    },
+    {
+      "path": "src/alphacode_tool_core/mod.rs",
+      "pristine_sha256": "7c49df7d7dbf39059f326a0c2b815fb11ff354a1199a48111badaf71d3fa4499",
+      "patched_sha256": "b7a7409e5a028a45dce1cc18eaebd454e9dcf8248fc414ae531e5072a472889e"
+    },
+    {
+      "path": "src/alphacode_tui/tui/app/commands.rs",
+      "pristine_sha256": "e6d814500f2d157cedabebfe8b5d8eadd4027c330c77f5628064d36bb162b150",
+      "patched_sha256": "d8a8e92104bf7cdd4dc56e8ab8a2b552425ea865ee9073c20c0f07e66b39c4a0"
+    },
+    {
+      "path": "src/alphacode_tui/tui/app/turn.rs",
+      "pristine_sha256": "cae1a225eee47e1d4767750c84f42307455e40fc400ab9fb4132e4300077c0f5",
+      "patched_sha256": "fc2b08151e6e3b2def1f918d38ab2b1285894e6704a9c610e6f60ac0f3d6cbd5"
+    },
+    {
+      "path": "src/cli/acp.rs",
+      "pristine_sha256": "0d09869adf8274b0dfc79aa959c2509cf585ba6e446692381df66e59af75b980",
+      "patched_sha256": "a28fa42baa56c821c02b77345d34dbf15ea1cb7bce3ec7ad831b120fe349c646"
+    },
+    {
+      "path": "src/cli/args.rs",
+      "pristine_sha256": "eea514fa1042e4493907ed19deabf8d35e80b18361f300a4fe31e5eb34c816dc",
+      "patched_sha256": "1d1ac744cf4fc113df9284b29688ab1e2835b797882de74c70311cc9c66a3218"
+    },
+    {
+      "path": "src/cli/dispatch.rs",
+      "pristine_sha256": "98e823ed42c8929837e83d1929e494a1392bb3725466678edba30481752c8989",
+      "patched_sha256": "172562e7342dc4e8b9c43033ccad3bbe10ab3770603a07446d95b2e6188874b9"
+    },
+    {
+      "path": "src/cli/ironbark_managed.rs",
+      "pristine_sha256": null,
+      "patched_sha256": "1ddb78a676f0082e670a715e6632b6195c45b080b4f281244209ece25fba2053"
+    },
+    {
+      "path": "src/cli/mod.rs",
+      "pristine_sha256": "c06f9dbd4bbb491ab89e20b218c3e1ea60b4058fb06ebc36a0a8de9f43c02f3f",
+      "patched_sha256": "a527f1e7b98a6f2964e10cc3d0cef58b0398a4051ce528e3113b360a7ddb865c"
+    },
+    {
+      "path": "src/cli/startup.rs",
+      "pristine_sha256": "d30e8a145bedb4914c5bc35283d5033413b60f8b5973ae319e964498281676bb",
+      "patched_sha256": "8315a47d94a9981841e339ce0af22c1eeb888d00f3744541b911420b93ea0cdc"
+    }
+  ],
+  "source_recipe_digest": "fa1cd7c333dc2b7692ad30954b2aab63e8d09aac59c2b9d09ead2fc1e72b8986",
+  "digest_definition": "SHA256(ASCII(commit) || patch_series file bytes in order || build.sh bytes || patched Cargo.lock bytes || rust-toolchain.toml bytes)",
   "build_recipe": {
     "path": "build.sh",
-    "sha256": "6fc615c6ecdef302533da8603202aba7453c971ba14f9566e1b0b1bd8725f292",
+    "sha256": "8b7e7bd3ca22d3f363ef9c017a4e4679482ebae672623b4f60088540239e3235",
     "rust": "1.94.1",
     "command": "cargo +1.94.1 build --locked --release --no-default-features --bin alphacode",
+    "steps": [
+      "fetch pinned commit into checkout",
+      "reset checkout to the pinned commit",
+      "verify licence digests",
+      "reject unpinned patches",
+      "apply patch_series in order",
+      "verify patched per-file digests",
+      "recompute source_recipe_digest",
+      "cargo build",
+      "record build artifact digest"
+    ],
     "compiled_identity_env": "IRONBARK_ALPHACODE_BUILD_DIGEST",
+    "artifact_manifest": "build-artifact.json",
     "must_not_run_compiled_binary": true
   },
   "lock_sha256": "d3d1991553f4b791c30edabfbb478ae797509ea58a7d643bf453f47aecdfe737",
@@ -39,7 +577,9 @@
     "build_executed": false,
     "regressions_executed": false,
     "live_smoke_executed": false,
-    "dependency_license_inventory": "pending actual locked binary build"
+    "dependency_license_inventory": "pending actual locked binary build",
+    "upstream_tree_verified": true,
+    "patch_applies_to_pinned_commit": true
   },
   "security_prerequisites": [
     "C3 owned direct sibling daemon and ACP under in-namespace controller",

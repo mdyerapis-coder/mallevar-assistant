@@ -1,0 +1,21 @@
+[Unit]
+Description=Ironbark Assistant Core Daemon
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=%i
+Group=%i
+Environment=XDG_DATA_HOME=%h/.local/share
+Environment=XDG_STATE_HOME=%h/.local/state
+Environment=XDG_RUNTIME_DIR=%h/.local/state/runtime
+WorkingDirectory=%h
+ExecStart=%p/ironbark-core
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

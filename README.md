@@ -36,13 +36,24 @@ cargo build -p ironbark-core -p ironbark-cli
 Check the same way the repository is verified:
 
 ```sh
-cargo test -p ironbark-core -p ironbark-cli
-cargo clippy -p ironbark-core -p ironbark-cli --all-targets -- -D warnings
-bun install --ignore-scripts && bunx tsc --noEmit --strict
-bun test packages/adapters/test
-bun qa/smoke/core-reconnect.ts
-bun qa/smoke/worker-containment.ts
+bun qa/qualification/run-gates.ts
+bun qa/qualification/release.ts --manifest packaging/manifest.json
 ```
+
+The runner/checker require version-2 observed receipts. Each gate binds the
+current commit/tree, selected tracked and untracked product bytes/modes,
+required contracts/locks, toolchain executables, exact argv/cwd and the explicit
+gate environment. Source drift during or after a gate blocks release, even if
+the command exited zero. Stdout and stderr retain separate 64 KiB byte tails
+with original/dropped byte counts; binary tails are losslessly labeled base64.
+
+Use a qualification checkout without private `.env`, `.env.local`, or
+development/test/production dotenv variants: preflight refuses them without
+reading or copying their contents. Automatic Bun/Cargo configuration is part of
+the source inventory. Undeclared parent environment variables are not delivered
+to gates; supported selectors such as `IRONBARK_CORE_BIN`, `IRONBARK_CLI_BIN` and
+compiler wrappers are delivered and hash-bound. Live harness/provider
+qualification is separate from the default isolated executable tests.
 
 Worker execution needs `bubblewrap` (namespace isolation) and `bun`
 (adapter runtime); the containment smoke exercises real process/namespace
@@ -57,12 +68,36 @@ provider launch (C4), the live provider/JEV/AlphaCode qualification smokes,
 and the desktop release are not yet qualified — see `docs/runtime/` for the
 exact boundary of what is verified and what is not.
 
+Earlier verification (2026-10-15 UTC) reported the eight required gates
+**blocked, 7/8 passed**, with installed-Hermes discovery timeouts. Those old
+receipts do not qualify the current source. The all-65 work replaces ordinary
+harness discovery with isolated executables and adds exact-source v2 evidence;
+its complete joined release gate has not yet run. Focused JEV regressions
+(44 tests), native qualification tests (13), the earlier workspace Cargo gate
+and TypeScript checking passed.
+The earlier synthetic JEV diagnostic run did not qualify a domain; repeated inputs and inverted labels
+invalidate it as independent holdout evidence. See `docs/runtime/providers.md`.
+Native resumable interruption and the interactive desktop walkthrough remain
+incomplete; no all-five completion or main-merge claim is made.
+
 ## Packaging
 
-- **Arch (AUR):** `packaging/aur/PKGBUILD` — installs the core, CLI and the
-  namespace bridge (`ironbark-assistant` package).
-- **RPM:** `packaging/rpm/ironbark-assistant.spec` — built x86_64 `.rpm`
-  artifacts are attached to the GitHub releases.
+- **Arch (AUR):** `packaging/aur/PKGBUILD` installs the core, CLI, desktop
+  binary and namespace bridge. WebKitGTK is a runtime dependency and supplies
+  JavaScriptCore on Arch; the unenabled tray feature does not require appindicator.
+- **RPM:** `packaging/rpm/ironbark-assistant.spec`. Both recipes honor
+  `CARGO_TARGET_DIR` when installing release binaries.
+
+Current local candidates were built with actual `makepkg` and `rpmbuild -bb`.
+Extracted core/CLI payloads from both packages passed isolated status,
+blocked-qualification persistence, restart/readback and shutdown smokes;
+both desktop files validate. The RPM was built and exercised on Arch with
+RPM dependency-database lookup skipped, not qualified on Fedora.
+
+The existing GitHub `v0.1.0` RPM is historical. These candidates are not uploaded,
+signed or a replacement for that tag. GitHub authentication is invalid and the
+default AUR SSH identity is rejected. A local package build does not qualify the
+GUI, native run control or judgment domains.
 
 ## License
 

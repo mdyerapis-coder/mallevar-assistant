@@ -25,6 +25,11 @@ BuildRequires:  rust
 BuildRequires:  cargo
 BuildRequires:  glibc-devel
 BuildRequires:  desktop-file-utils
+# The desktop client is a Tauri application and links WebKitGTK/JavaScriptCore.
+BuildRequires:  webkit2gtk4.1-devel
+BuildRequires:  javascriptcoregtk4.1-devel
+BuildRequires:  librsvg2-devel
+BuildRequires:  openssl-devel
 
 # bubblewrap is required by the worker-containment boundary; glibc is the
 # dynamic runtime. bun is only needed to run the provider/JEV adapter worker.
@@ -41,13 +46,16 @@ second scheduler.
 This package ships:
   /usr/bin/ironbark-core         daemon + namespace runner
   /usr/bin/ironbark-cli          operator CLI (one JSON DTO per subcommand)
+  /usr/bin/ironbark-desktop      the headless desktop application (Tauri wrapper)
   /opt/ironbark/namespace-bridge private network bridge, staged at this exact
                                  path inside worker namespaces
   a headless desktop entry       the installed surface is the core daemon;
                                  there is no GUI yet
 
-Run scheduling and live provider launch (C4) and the desktop release are not
-yet qualified; see docs/runtime/ in the source for the exact verified boundary.
+Run scheduling and crash reconciliation (C4) are implemented and covered by
+tests and the crash-recovery smoke; live provider/harness launch, the judgment
+domains and the desktop release are not yet qualified. See docs/runtime/ in the
+source for the exact verified boundary.
 
 %prep
 %setup -q -n ironbark-assistant-%{version}
@@ -59,13 +67,15 @@ yet qualified; see docs/runtime/ in the source for the exact verified boundary.
 # this build so the bundled C compiles to plain objects.
 export CFLAGS="$(echo "${CFLAGS:-}" | sed -E 's/(^|[[:space:]])-flto(=[A-Za-z0-9_-]+)?//g')"
 export CXXFLAGS="$(echo "${CXXFLAGS:-}" | sed -E 's/(^|[[:space:]])-flto(=[A-Za-z0-9_-]+)?//g')"
-cargo build --release -p ironbark-core -p ironbark-cli
+    cargo build --release -p ironbark-core -p ironbark-cli -p ironbark-desktop
 
 %install
 rm -rf %{buildroot}
-install -Dm755 target/release/ironbark-core    %{buildroot}%{_bindir}/ironbark-core
-install -Dm755 target/release/ironbark-cli     %{buildroot}%{_bindir}/ironbark-cli
-install -Dm755 target/release/namespace_bridge %{buildroot}/opt/ironbark/namespace-bridge
+release_dir="${CARGO_TARGET_DIR:-target}/release"
+install -Dm755 "${release_dir}/ironbark-core"    %{buildroot}%{_bindir}/ironbark-core
+install -Dm755 "${release_dir}/ironbark-cli"     %{buildroot}%{_bindir}/ironbark-cli
+install -Dm755 "${release_dir}/ironbark-desktop" %{buildroot}%{_bindir}/ironbark-desktop
+install -Dm755 "${release_dir}/namespace_bridge" %{buildroot}/opt/ironbark/namespace-bridge
 install -Dm644 LICENSE %{buildroot}%{_licensedir}/%{name}/LICENSE
 install -Dm644 README.md %{buildroot}%{_docdir}/%{name}/README.md
 install -Dm644 packaging/desktop/ironbark-assistant.desktop %{buildroot}%{_datadir}/applications/ironbark-assistant.desktop
@@ -84,6 +94,7 @@ install -Dm644 packaging/desktop/ironbark-assistant.svg %{buildroot}%{_datadir}/
 %doc %{_docdir}/%{name}/README.md
 %{_bindir}/ironbark-core
 %{_bindir}/ironbark-cli
+%{_bindir}/ironbark-desktop
 /opt/ironbark/namespace-bridge
 %{_datadir}/applications/ironbark-assistant.desktop
 %{_datadir}/icons/hicolor/scalable/apps/ironbark-assistant.svg
@@ -92,3 +103,6 @@ install -Dm644 packaging/desktop/ironbark-assistant.svg %{buildroot}%{_datadir}/
 * Tue Oct 13 2026 Mason <ironbark@llmclouds.au> - 0.1.0-1
 - Initial RPM packaging: core, CLI, namespace bridge and a headless desktop
   entry, built from the v0.1.0 source tag.
+- Install the CLI binary the %files list already claimed, own the staged
+  namespace bridge at /opt/ironbark, and add the WebKitGTK build requirements
+  the Tauri desktop client needs.

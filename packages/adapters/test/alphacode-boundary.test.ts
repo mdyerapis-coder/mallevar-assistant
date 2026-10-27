@@ -25,7 +25,7 @@ test('cancel_observes_daemon_children', () => {
   requireObservedStop({ session_id: 's', cancelled: true, active_tools: 0, children: [] }, 's');
 });
 test('changed_native_input_cannot_reuse_permission', () => {
-  const action = { session_id: 's', tool_call_id: 't', resolved_name: 'write', canonical_input: { path: '/work/owned/a', content: 'safe' }, cwd: expected.cwd, route: expected.effectiveRoute, policy_version: 1, state_digest: 'b'.repeat(64) };
+  const action = { session_id: 's', tool_call_id: 't', resolved_name: 'write', canonical_input: { path: '/work/owned/a', content: 'safe' }, cwd: expected.cwd, route: expected.effectiveRoute, policy_version: "1", state_digest: 'b'.repeat(64) };
   expect(() => permissionReply({ request_id: 'p', action }, { request_id: 'p', action: { ...action, canonical_input: { ...action.canonical_input, content: 'changed' } }, allowed: true })).toThrow();
   expect(permissionReply({ request_id: 'p', action }, { request_id: 'p', action, allowed: false }).allowed).toBe(false);
 });

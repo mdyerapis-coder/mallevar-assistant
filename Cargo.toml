@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/ironbark-core", "crates/ironbark-cli"]
+members = ["crates/ironbark-core", "crates/ironbark-cli", "apps/desktop/src-tauri"]
 resolver = "2"
 
 [workspace.package]

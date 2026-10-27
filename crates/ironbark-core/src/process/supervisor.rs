@@ -1,8 +1,32 @@
 use super::{LaunchSpec, launcher::{self, NamespaceBootstrap, Ready, RunnerConfig}, sandbox};
 use crate::{contracts::{ProjectPolicy, RunId}, error::{CoreError, Result}, net::NetworkLease};
-use std::{collections::{BTreeMap,BTreeSet}, fs::{self,File}, io::{Read,Write}, os::{fd::{AsRawFd,FromRawFd,OwnedFd}, unix::{net::UnixStream,process::CommandExt}}, path::{Path,PathBuf}, process::{Child,Command,Stdio}, sync::{Arc,atomic::{AtomicUsize,Ordering}}, time::{Duration,Instant}};
+use std::{collections::{BTreeMap,BTreeSet}, fs::{self,File}, io::{Read,Write}, os::{fd::{AsRawFd,FromRawFd,OwnedFd}, unix::{fs::MetadataExt, net::UnixStream,process::CommandExt}}, path::{Path,PathBuf}, process::{Child,Command,Stdio}, sync::{Arc,atomic::{AtomicUsize,Ordering}}, time::{Duration,Instant}};
 
 fn denied(message: &str) -> CoreError { CoreError::new("containment_denied",message) }
+/// A runtime file is exposed only when its path or another hardlink of the same
+/// inode sits inside an approved writable root. nlink>1 alone is not exposure:
+/// system libraries are often hardlinked under /lib and /usr/lib.
+fn runtime_source_exposed(source: &Path, writable: &[PathBuf]) -> bool {
+    if writable.iter().any(|root| source.starts_with(root)) { return true; }
+    let Ok(meta) = fs::metadata(source) else { return true; };
+    if !meta.is_file() { return true; }
+    if meta.nlink() <= 1 { return false; }
+    let (dev, ino) = (meta.dev(), meta.ino());
+    writable.iter().any(|root| inode_in_tree(root, dev, ino))
+}
+fn inode_in_tree(root: &Path, dev: u64, ino: u64) -> bool {
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else { return true; };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let Ok(meta) = fs::symlink_metadata(&path) else { return true; };
+            if meta.dev() == dev && meta.ino() == ino { return true; }
+            if meta.is_dir() && !meta.file_type().is_symlink() { stack.push(path); }
+        }
+    }
+    false
+}
 fn pidfd(pid: u32) -> Result<OwnedFd> { let fd=unsafe {libc::syscall(libc::SYS_pidfd_open,pid,0_u32)}; if fd<0 {return Err(std::io::Error::last_os_error().into());} Ok(unsafe {OwnedFd::from_raw_fd(fd as i32)}) }
 pub(crate) fn read_stat(pid:u32)->Result<(u32,u64)> {
     let stat=fs::read_to_string(format!("/proc/{pid}/stat"))?;
@@ -45,7 +69,11 @@ pub struct ProcessLease {
 impl ProcessLease {
     pub fn owned_processes(&self)->Result<Vec<ProcessIdentity>> {
         if !self.runner.is_live()? {return Ok(Vec::new());}
-        if read_stat(self.pid)?.1!=self.runner.start_ticks {return Err(denied("namespace controller identity changed"));}
+        match read_stat(self.pid) {
+            Ok((_,ticks)) if ticks==self.runner.start_ticks=>{},
+            _ if !self.runner.is_live()?=>return Ok(Vec::new()),
+            _=>return Err(denied("namespace controller identity changed")),
+        }
         let mut stats=BTreeMap::new();
         for entry in fs::read_dir("/proc")? {
             let entry=entry?; if let Some(pid)=entry.file_name().to_str().and_then(|s|s.parse::<u32>().ok()) && let Ok(stat)=read_stat(pid) {stats.insert(pid,stat);}
@@ -70,11 +98,22 @@ impl ProcessLease {
             if let Ok(identity)=ProcessIdentity::capture(pid,self.sandbox_identity)
                 && stats.get(&pid).is_some_and(|(_,tick)|*tick==identity.start_ticks) && identity.is_live()? {identities.push(identity);}
         }
-        if !self.runner.is_live()? {return Ok(Vec::new());}
-        if read_stat(self.pid)?.1!=self.runner.start_ticks {return Err(denied("namespace identity changed while observing descendants"));}
+        if !self.runner.is_live()? {return Ok(identities);}
+        match read_stat(self.pid) {
+            Ok((_,ticks)) if ticks==self.runner.start_ticks=>{},
+            _ if !self.runner.is_live()?=>return Ok(identities),
+            _=>return Err(denied("namespace identity changed while observing descendants")),
+        }
         Ok(identities)
     }
     fn observe(&mut self)->Result<()> {for identity in self.owned_processes()? {self.observed.insert((identity.pid,identity.start_ticks),identity);} Ok(())}
+    /// Persist every identity exposed to the controller, including short-lived
+    /// descendants which may disappear before cancellation starts.
+    pub fn observe_owned_processes(&mut self)->Result<Vec<ProcessIdentity>> {
+        let identities=self.owned_processes()?;
+        for identity in &identities {self.observed.insert((identity.pid,identity.start_ticks),identity.clone());}
+        Ok(identities)
+    }
 }
 impl Drop for ProcessLease {
     fn drop(&mut self) {
@@ -91,7 +130,7 @@ impl ApprovedRoot {
         Ok(Self {path,descriptor})
     }
 }
-pub struct ProcessSupervisor { read_roots:Vec<ApprovedRoot>,write_roots:Vec<ApprovedRoot>,runner:PathBuf,max_workers:usize,workers:Arc<AtomicUsize>,local_only:bool }
+pub struct ProcessSupervisor { read_roots:Vec<ApprovedRoot>,write_roots:Vec<ApprovedRoot>,runner:PathBuf,max_workers:usize,workers:Arc<AtomicUsize>,local_only:bool,policy:ProjectPolicy }
 impl ProcessSupervisor {
     pub fn new(policy:ProjectPolicy,namespace_runner:PathBuf)->Result<Self> {
         if policy.max_workers==0 {return Err(denied("zero worker budget"));}
@@ -99,7 +138,12 @@ impl ProcessSupervisor {
         let writes=policy.write_roots.iter().map(|p|ApprovedRoot::new(p)).collect::<Result<Vec<_>>>()?;
         let runner=namespace_runner.canonicalize()?;
         if !runner.is_file(){return Err(denied("missing namespace runner"));}
-        Ok(Self {read_roots:reads,write_roots:writes,runner,max_workers:policy.max_workers as usize,workers:Arc::new(AtomicUsize::new(0)),local_only:policy.local_only})
+        Ok(Self {read_roots:reads,write_roots:writes,runner,max_workers:policy.max_workers as usize,workers:Arc::new(AtomicUsize::new(0)),local_only:policy.local_only,policy})
+    }
+    /// Reuse approved-root pinning and the supplied supervisor's policy/budget.
+    pub(crate) fn pin_worker_root(&self,root:&Path,policy:&ProjectPolicy)->Result<File> {
+        if policy!=&self.policy {return Err(denied("worker host and supervisor policy differ"));}
+        self.mount(root,false).map(|(_,file)|file)
     }
     fn slot(&self)->Result<WorkerSlot> {
         self.workers.fetch_update(Ordering::AcqRel,Ordering::Acquire,|n|if n<self.max_workers {Some(n+1)}else{None}).map_err(|_|CoreError::new("worker_budget_exhausted","project worker limit reached"))?;
@@ -143,10 +187,15 @@ impl ProcessSupervisor {
         let (mut control,parent_control)=UnixStream::pair()?; control.set_read_timeout(Some(Duration::from_secs(8)))?; control.set_write_timeout(Some(Duration::from_secs(5)))?;
         let (info,child_info)=UnixStream::pair()?; info.set_read_timeout(Some(Duration::from_secs(8)))?;
         let null=File::open("/dev/null")?;
-        let mut descriptors:Vec<(i32,OwnedFd)>=vec![(3,parent_control.into()),(4,null.try_clone()?.into()),(5,null.into()),(6,child_info.into())];
-        let mut config=RunnerConfig {executable:spec.executable.clone(),argv:spec.argv,cwd,env:spec.env_allowlist,private_fd3:false,siblings:None,bridge_port:None};
+        let mut descriptors:Vec<(i32,OwnedFd)>=vec![(3,parent_control.into()),(4,null.try_clone()?.into()),(5,null.try_clone()?.into()),(6,child_info.into()),(7,null.into())];
+        let mut config=RunnerConfig {executable:spec.executable.clone(),argv:spec.argv,cwd,env:spec.env_allowlist,private_fd3:false,worker_channel:false,siblings:None,bridge_port:None};
         match spec.bootstrap {
             Some(NamespaceBootstrap::PrivateFd3(fd))=>{descriptors[1].1=fd;config.private_fd3=true;},
+            Some(NamespaceBootstrap::ManagedWorker {credentials,channel})=>{
+                descriptors[4].1=channel;config.worker_channel=true;config.private_fd3=true;
+                // An unauthenticated worker still consumes an empty EOF capsule.
+                if let Some(fd)=credentials {descriptors[1].1=fd;}
+            },
             Some(NamespaceBootstrap::AlphaCodeSiblings {daemon,acp})=>{
                 for executable in [&daemon.executable,&acp.executable] {if !spec.runtime.files.contains_key(executable) {return Err(denied("managed sibling missing from runtime manifest"));}}
                 config.siblings=Some((daemon.executable,daemon.argv,acp.executable,acp.argv));
@@ -154,7 +203,7 @@ impl ProcessSupervisor {
         }
         let mut command=Command::new("/usr/bin/bwrap"); command.env_clear().args(["--unshare-all","--die-with-parent","--new-session","--as-pid-1","--cap-drop","ALL","--clearenv","--proc","/proc","--dev","/dev","--tmpfs","/tmp","--tmpfs","/home","--tmpfs","/home/worker","--tmpfs","/run","--tmpfs","/run/worker"]);
         command.args(["--setenv","PATH","/usr/bin:/bin","--setenv","HOME","/home/worker","--setenv","XDG_RUNTIME_DIR","/run/worker","--info-fd","6"]);
-        let mut next_fd=7;
+        let mut next_fd=8;
         let mut add_mount=|command:&mut Command,source:OwnedFd,destination:&Path,readonly:bool| {
             let fd=next_fd;next_fd+=1; command.arg(if readonly {"--ro-bind"}else{"--bind"}).arg(format!("/proc/self/fd/{fd}")).arg(destination); descriptors.push((fd,source));
         };
@@ -166,6 +215,7 @@ impl ProcessSupervisor {
             let destination = if source==&self.runner { runner_destination.clone() } else { destination.clone() };
             sandbox::validate_destination(&destination)?;
             if spec.readonly_mounts.iter().chain(&spec.writable_mounts).any(|m|destination.starts_with(m) || m.starts_with(&destination)) {return Err(denied("runtime and workspace mounts overlap"));}
+            if runtime_source_exposed(source, &spec.writable_mounts) {return Err(denied("runtime source is exposed through a writable mount or multiply linked"));}
             add_mount(&mut command,sandbox::pin(source,false)?.into(),&destination,true);
         }
         for path in &spec.readonly_mounts {let (destination,file)=self.mount(path,false)?;add_mount(&mut command,file.into(),&destination,true);}
@@ -226,9 +276,14 @@ impl ProcessSupervisor {
     pub fn stop(&self,mut lease:ProcessLease,grace_ms:u64)->Result<StopReceipt> {
         if grace_ms!=2000 {return Err(denied("containment cancellation grace must be exactly 2000ms"));}
         lease.observe()?;
-        let sent=lease.control.write_all(&[1]);
+        // The cancel byte may hit EPIPE when the runner already closed the control
+        // channel while exiting: launcher.rs drops fd3 only after reap() reaped every
+        // namespace child. pidfd liveness can lag that window, so termination must be
+        // decided by finish()'s bounded reap/SIGKILL escalation, never by an
+        // instantaneous EPIPE+is_live() snapshot. finish() still reports
+        // termination_unknown truthfully if no termination is established.
+        let _ = lease.control.write_all(&[1]);
         if let Some(network)=&lease.network {network.revoke();}
-        if sent.is_err() && lease.runner.is_live()? {return Err(CoreError::new("termination_unknown","namespace cancellation control failed"));}
         self.finish(lease,Duration::from_secs(8),true)
     }
     pub fn wait(&self,lease:ProcessLease,timeout:Duration)->Result<StopReceipt> {self.finish(lease,timeout,false)}

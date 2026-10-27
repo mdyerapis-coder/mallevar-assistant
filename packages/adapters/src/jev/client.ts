@@ -1,5 +1,6 @@
 import { decode, object, parseCompletion, scoreEvidence } from "./decode";
-import { FACADE_BASE, RUNTIME_BASE, judgmentPrompt, runtimeIdentity, sameRuntimeIdentity, sha256 } from "./identity";
+import { FACADE_BASE, judgmentPrompt, runtimeBase, runtimeIdentity, sameRuntimeIdentity, sha256 } from "./identity";
+import { formatWireU64 } from "../../../contracts/src/wire";
 import type { JevClientOptions, JevTransport, JudgmentInput, JudgmentRecord, RuntimeIdentity } from "./types";
 
 const UNKNOWN_RUNTIME_DIGEST = sha256("ironbark-jev:runtime-identity-unobserved:v1");
@@ -38,7 +39,7 @@ export class JevClient {
       candidates: request.candidates, candidate_codes: codes, input_refs: request.input_refs,
       input_digest: request.input_digest, criterion: request.criterion, route_policy_digest: request.route_policy_digest,
       model_identity: observed?.model_identity ?? "unknown", runtime_identity_digest: observed?.digest ?? UNKNOWN_RUNTIME_DIGEST,
-      prompt_digest: promptDigest, state, score: { type: "none" }, latency_ms: Math.ceil(performance.now() - started),
+      prompt_digest: promptDigest, state, score: { type: "none" }, latency_ms: formatWireU64(BigInt(Math.ceil(performance.now() - started))),
       ...(reason ? { reason } : {}),
     });
     if (signal.aborted) return record("unavailable", "cancelled");
@@ -66,7 +67,7 @@ export class JevClient {
         return record("invalid", "input_digest_or_size_mismatch");
       const prompt = judgmentPrompt(request, content, codes);
       promptDigest = sha256(prompt);
-      observed = await this.probe(controller.signal);
+      observed = await this.observeIdentity(controller.signal);
       if (!observed) return record("unqualified", "runtime_identity_unknown");
       if (this.pinned && !sameRuntimeIdentity(this.pinned, observed)) {
         this.invalidated = true;
@@ -74,12 +75,12 @@ export class JevClient {
       }
       this.pinned ??= observed;
       const grammar = `root ::= (${[...Object.keys(codes), "ABSTAIN"].map(code => JSON.stringify(code)).join(" | ")})`;
-      const raw = await this.request(`${RUNTIME_BASE}/completion`, controller.signal, {
+      const raw = await this.request(`${observed.runtime_base}/completion`, controller.signal, {
         prompt, grammar, n_predict: 16, temperature: 0, n_probs: 10, cache_prompt: true,
         stream: false, post_sampling_probs: false,
       });
       // Probe after even an invalid completion; a runtime change takes precedence.
-      const after = await this.probe(controller.signal);
+      const after = await this.observeIdentity(controller.signal);
       if (!sameRuntimeIdentity(observed, after)) {
         this.invalidated = true;
         return record("unqualified", after ? "runtime_identity_changed" : "runtime_identity_unknown");
@@ -166,7 +167,7 @@ export class JevClient {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   }
 
-  private async probe(signal: AbortSignal): Promise<RuntimeIdentity | null> {
+  async observeIdentity(signal: AbortSignal): Promise<RuntimeIdentity | null> {
     // Fast-fail: the first probe request failure rejects as soon as it is
     // observed. An operation abort (timeout, cancellation, or the caller's
     // finally after an early failure) rejects cooperative transports via their
@@ -175,14 +176,16 @@ export class JevClient {
     // injected transport cannot be stopped; the operation result and slot do
     // not wait for it.
     try {
+      const facade: unknown = JSON.parse(await this.request(`${FACADE_BASE}/api/status`, signal));
+      const base = runtimeBase(facade);
+      if (!base) return null;
       const values = await Promise.all([
-        this.request(`${FACADE_BASE}/api/status`, signal),
-        this.request(`${RUNTIME_BASE}/health`, signal),
-        this.request(`${RUNTIME_BASE}/props`, signal),
+        this.request(`${base}/health`, signal),
+        this.request(`${base}/props`, signal),
       ]);
       const parsed: unknown[] = values.map(value => JSON.parse(value));
       if (!parsed.every(object)) return null;
-      return runtimeIdentity(parsed[0], parsed[1], parsed[2]);
+      return runtimeIdentity(facade, parsed[0], parsed[1]);
     } catch {
       signal.throwIfAborted();
       throw new Error("probe_failed");

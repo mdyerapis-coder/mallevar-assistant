@@ -7,16 +7,17 @@ use serde::{Serialize,Deserialize};
 use schemars::JsonSchema;
 use ts_rs::TS;
 use crate::{contracts::Digest,error::{CoreError,Result},paths::{RuntimePaths,private_directory}};
-use super::{Store,events::{redact_value,now_ms},objects::{self,Staging,DEFAULT_ITEM_BYTES},retention::{referenced_digests,quote}};
+use super::{Store,events::now_ms,objects::{self,Staging,DEFAULT_ITEM_BYTES},schema::StorageSchema};
 
-#[derive(Debug,Clone,Serialize,Deserialize,JsonSchema,TS)]
+#[derive(Debug,Clone,PartialEq,Serialize,Deserialize,JsonSchema,TS)]
 #[serde(deny_unknown_fields)]
-pub struct BackupObject {pub digest:Digest,#[ts(type="number")] pub bytes:u64}
-#[derive(Debug,Clone,Serialize,Deserialize,JsonSchema,TS)]
+pub struct BackupObject {pub digest:Digest,#[serde(with="crate::contracts::wire::u64")] #[schemars(with="crate::contracts::wire::WireU64Schema")] #[ts(type="string")] pub bytes:u64}
+#[derive(Debug,Clone,PartialEq,Serialize,Deserialize,JsonSchema,TS)]
 #[serde(deny_unknown_fields)]
-pub struct BackupManifest {pub format:u32,#[ts(type="number")] pub created_at:i64,pub database_digest:Digest,#[ts(type="number")] pub database_bytes:u64,pub objects:Vec<BackupObject>}
-#[derive(Debug,Clone,Serialize,Deserialize,JsonSchema,TS)]
-pub struct RestoreReport {pub database_digest:Digest,#[ts(type="number")] pub restored_objects:u64,#[ts(type="number")] pub blocked_runs:u64,pub stopped:bool,pub namespace:String}
+pub struct BackupManifest {pub format:u32,#[serde(with="crate::contracts::wire::i64")] #[schemars(with="crate::contracts::wire::WireI64Schema")] #[ts(type="string")] pub created_at:i64,pub database_digest:Digest,#[serde(with="crate::contracts::wire::u64")] #[schemars(with="crate::contracts::wire::WireU64Schema")] #[ts(type="string")] pub database_bytes:u64,pub objects:Vec<BackupObject>}
+#[derive(Debug,Clone,PartialEq,Serialize,Deserialize,JsonSchema,TS)]
+#[serde(deny_unknown_fields)]
+pub struct RestoreReport {pub database_digest:Digest,#[serde(with="crate::contracts::wire::u64")] #[schemars(with="crate::contracts::wire::WireU64Schema")] #[ts(type="string")] pub restored_objects:u64,#[serde(with="crate::contracts::wire::u64")] #[schemars(with="crate::contracts::wire::WireU64Schema")] #[ts(type="string")] pub blocked_runs:u64,pub stopped:bool,pub namespace:String}
 #[derive(Clone)]
 pub struct BackupService {store:Store,root:PathBuf}
 
@@ -53,52 +54,9 @@ fn copy_verified(source:&Path,target:&Path,digest:&Digest,bytes:u64)->Result<()>
     objects::verified_file(target,digest,Some(bytes))?;Ok(())
 }
 fn integrity(conn:&Connection)->Result<()> {
-    let unsafe_sql:i64=conn.query_row("SELECT count(*) FROM sqlite_master WHERE type IN ('trigger','view')",[],|r|r.get(0))?;
-    let version:i64=conn.pragma_query_value(None,"user_version",|r|r.get(0))?;
-    if unsafe_sql!=0 || version!=1 {return Err(CoreError::new("IntegrityMismatch","unreviewed executable SQL or schema version in snapshot"));}
-    let mut stmt=conn.prepare("PRAGMA integrity_check")?;let results=stmt.query_map([],|r|r.get::<_,String>(0))?.collect::<std::result::Result<Vec<_>,_>>()?;
-    if results!=["ok"] {return Err(CoreError::new("IntegrityMismatch","SQLite integrity check failed"));}
-    let mut stmt=conn.prepare("PRAGMA foreign_key_check")?;if stmt.query([])?.next()?.is_some() {return Err(CoreError::new("IntegrityMismatch","SQLite foreign keys are invalid"));}Ok(())
+    StorageSchema::inspect(conn)?;Ok(())
 }
 
-/// Fail closed for new tables until their data/export ownership is reviewed.
-/// SQLite free pages are rebuilt after redaction: UPDATE alone leaks old secrets.
-fn sanitize(conn:&mut Connection)->Result<()> {
-    integrity(conn)?;
-    const ALLOWED:&[&str]=&["projects","policies","provider_references","provider_observations","conversations","branches","messages","branch_messages","attachments","jobs","nodes","runs","conversation_turns","actions","grants","action_outcomes","requests","events","artifacts","checkpoints","sources","source_revisions","chunks","embeddings","memory","judgments","import_previews","import_receipts"];
-    let names={let mut stmt=conn.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")?;let rows=stmt.query_map([],|r|r.get::<_,String>(0))?;rows.collect::<std::result::Result<Vec<_>,_>>()?};
-    if names.iter().any(|name|!ALLOWED.contains(&name.as_str())) {return Err(CoreError::new("UnknownBackupSchema","new database tables require explicit export review"));}
-    conn.pragma_update(None,"secure_delete","ON")?;
-    let tx=conn.transaction()?;
-    for table in names {
-        let table_name=table;let table=quote(&table_name);
-        let columns={let mut stmt=tx.prepare(&format!("PRAGMA table_info({table})"))?;let rows=stmt.query_map([],|r|Ok((r.get::<_,String>(1)?,r.get::<_,String>(2)?)))?;rows.collect::<std::result::Result<Vec<_>,_>>()?};
-        for (column_name,_kind) in columns {
-            let column=quote(&column_name);
-            let blobs:i64=tx.query_row(&format!("SELECT count(*) FROM {table} WHERE typeof({column})='blob'"),[],|r|r.get(0))?;
-            if blobs!=0 && !(table_name=="embeddings" && column_name=="vector") {
-                return Err(CoreError::new("UnknownBackupSchema","unreviewed binary data requires an explicit export contract"));
-            }
-            let mut stmt=tx.prepare(&format!("SELECT rowid,{column} FROM {table} WHERE typeof({column})='text'"))?;
-            let mut rows=stmt.query([])?;
-            while let Some(row)=rows.next()? {
-                let id:i64=row.get(0)?;let text:String=row.get(1)?;
-                let parsed=serde_json::from_str::<serde_json::Value>(&text);
-                let is_json=parsed.is_ok();
-                let mut envelope=serde_json::Map::new();
-                envelope.insert(column_name.clone(),parsed.unwrap_or_else(|_|serde_json::Value::String(text.clone())));
-                let mut envelope=serde_json::Value::Object(envelope);let before=envelope.clone();redact_value(&mut envelope);
-                if envelope==before {continue;} // Preserve exact non-secret text/JSON formatting.
-                let value=&envelope[&column_name];
-                let cleaned=if is_json {serde_json::to_string(value)?}else{value.as_str().unwrap_or("[REDACTED]").to_owned()};
-                if text!=cleaned {tx.execute(&format!("UPDATE {table} SET {column}=?1 WHERE rowid=?2"),rusqlite::params![cleaned,id])?;}
-            }
-        }
-    }
-    tx.commit()?;
-    conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE; VACUUM;")?;
-    integrity(conn)
-}
 
 impl BackupService {
     pub fn new(store:Store,root:PathBuf)->Result<Self> {objects::safe_ancestors(&root)?;private_directory(&root)?;Ok(Self{store,root})}
@@ -126,10 +84,13 @@ impl BackupService {
         let root=self.root.clone();
         tokio::task::spawn_blocking(move || {
             let _guard=guard;let database=stage.path.join("core.sqlite3");
-            let mut snapshot=Connection::open(&database)?;
-            sanitize(&mut snapshot)?;
+            let snapshot=Connection::open(&database)?;
+            let schema=StorageSchema::for_version(1)?;
+            snapshot.pragma_update(None,"secure_delete","ON")?;
+            schema.sanitize(&snapshot)?;
+            snapshot.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE; VACUUM;")?;
             // These references belong to the online snapshot, never a live query.
-            let roots=referenced_digests(&snapshot)?;
+            let roots=schema.roots(&snapshot)?.into_iter().map(|reference|reference.digest.as_str().to_owned()).collect::<BTreeSet<_>>();
             let object_dir=stage.path.join("objects");private_directory(&object_dir)?;let mut objects_manifest=Vec::with_capacity(roots.len());
             for value in roots {let digest=Digest::parse(&value)?;
                 let bytes=objects::read_file(&root.join(&value)).map_err(|_|CoreError::new("IntegrityMismatch","referenced CAS object is missing or unsafe"))?.metadata()?.len();
@@ -168,8 +129,10 @@ fn restore_stopped(source:&Path,target:&RuntimePaths)->Result<RestoreReport> {
     // All validation and modifications happen in a sibling staging directory.
     let stage=stage_for(&target.data_dir)?;let database=stage.path.join("core.sqlite3");
     copy_verified(&source.join("core.sqlite3"),&database,&manifest.database_digest,manifest.database_bytes)?;
-    let mut conn=Connection::open(&database)?;conn.pragma_update(None,"foreign_keys","ON")?;integrity(&conn)?;
-    if referenced_digests(&conn)?!=digests {return Err(CoreError::new("IntegrityMismatch","manifest is not exactly the snapshot object closure"));}
+    let conn=Connection::open(&database)?;conn.pragma_update(None,"foreign_keys","ON")?;
+    let schema=StorageSchema::for_version(1)?;
+    let roots=schema.roots(&conn)?.into_iter().map(|reference|reference.digest.as_str().to_owned()).collect::<BTreeSet<_>>();
+    if roots!=digests {return Err(CoreError::new("IntegrityMismatch","manifest is not exactly the snapshot object closure"));}
     let object_dir=stage.path.join("objects");private_directory(&object_dir)?;
     for object in &manifest.objects {
         let installed=object_dir.join(object.digest.as_str());
@@ -178,17 +141,11 @@ fn restore_stopped(source:&Path,target:&RuntimePaths)->Result<RestoreReport> {
     }
     // Restore also reviews/sanitizes untrusted backup tables before opening the
     // restored core. Existing grants become historical receipts, never authority.
-    sanitize(&mut conn)?;
-    let tx=conn.transaction()?;
-    let blocked_runs=tx.execute("UPDATE runs SET state='blocked' WHERE state NOT IN ('succeeded','failed','cancelled')",[])? as u64;
-    tx.execute("UPDATE nodes SET state='blocked' WHERE state NOT IN ('succeeded','failed','cancelled')",[])?;
-    tx.execute("UPDATE jobs SET state='blocked' WHERE state NOT IN ('succeeded','failed','cancelled')",[])?;
-    tx.execute("UPDATE requests SET state='abandoned',reply=NULL WHERE state='in_flight'",[])?;
-    tx.execute("UPDATE conversation_turns SET dispatch_claimed=1",[])?;
-    tx.execute("UPDATE messages SET status='interrupted' WHERE status IN ('queued','streaming','awaiting_acceptance') AND id IN (SELECT assistant_message_id FROM conversation_turns WHERE run_id IN (SELECT id FROM runs WHERE state='blocked'))",[])?;
-    tx.execute("UPDATE grants SET revoked_at=COALESCE(revoked_at,?1)",[now_ms()])?;
-    tx.execute("UPDATE actions SET state='blocked' WHERE state IN ('executing','awaiting_approval','approved')",[])?;
-    tx.commit()?;conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;")?;integrity(&conn)?;drop(conn);
+    conn.pragma_update(None,"secure_delete","ON")?;
+    schema.sanitize(&conn)?;
+    let blocked_runs=conn.query_row("SELECT count(*) FROM runs WHERE state NOT IN ('succeeded','failed','cancelled')",[],|r|r.get::<_,i64>(0))? as u64;
+    schema.restore_inactive(&conn)?;
+    conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE; VACUUM;")?;integrity(&conn)?;drop(conn);
     let report=RestoreReport{database_digest:manifest.database_digest,restored_objects:manifest.objects.len() as u64,blocked_runs,stopped:true,namespace:target.data_dir.to_string_lossy().into_owned()};
     let mut marker=objects::new_file(&stage.path.join("restore.json"))?;serde_json::to_writer(&mut marker,&report)?;marker.sync_all()?;
     File::open(&database)?.sync_all()?;objects::sync_dir(&object_dir)?;objects::sync_dir(&stage.path)?;

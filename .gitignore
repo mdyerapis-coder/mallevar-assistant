@@ -7,3 +7,4 @@ dist/
 .env
 *.log
 qa/private/
+tests/webgpt_receipts.rs

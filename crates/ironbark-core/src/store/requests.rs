@@ -31,7 +31,7 @@ pub fn projects(conn: &rusqlite::Connection) -> Result<Vec<Project>> {
     Ok(result)
 }
 
-fn ok(value: serde_json::Value) -> CoreReply { CoreReply::Ok { value } }
+fn ok(value: CommandResult) -> CoreReply { CoreReply::Ok { value } }
 fn invalid(message: &str) -> CoreReply { CoreReply::Error { code: "invalid_command".into(), message: message.into(), details: serde_json::json!({}) } }
 
 pub fn execute(tx: &Transaction<'_>, id: Uuid, command: &CoreCommand) -> Result<CoreReply> {
@@ -47,30 +47,38 @@ pub fn execute(tx: &Transaction<'_>, id: Uuid, command: &CoreCommand) -> Result<
                 let project = Project { id: ProjectId::new(), name: redact_text(name), root: redact_text(root), created_at: now_ms() };
                 tx.execute("INSERT INTO projects(id,name,root,created_at) VALUES(?1,?2,?3,?4)", params![project.id.to_string(), project.name, project.root, project.created_at])?;
                 append_tx(tx, Some(id), Some(project.id), None, &CoreEvent::StateChanged { entity_id: project.id.to_string(), state: "project_created".into() })?;
-                ok(serde_json::to_value(project)?)
+                ok(CommandResult::ProjectCreate { value: project })
             }
         }
-        CoreCommand::ProjectList {} => ok(serde_json::to_value(projects(tx)?)?),
+        CoreCommand::ProjectList {} => ok(CommandResult::ProjectList { value: projects(tx)? }),
         CoreCommand::Events { after } => {
             // A query returns a bounded page; stream subscriptions page indefinitely.
             if *after > i64::MAX as u64 {
                 CoreReply::Error { code: "invalid_cursor".into(), message: "cursor exceeds SQLite range".into(), details: serde_json::json!({}) }
-            } else { ok(serde_json::to_value(super::events::events_page(tx, *after, 256)?)?) }
+            } else { ok(CommandResult::Events { value: super::events::events_page(tx, *after, 256)? }) }
         }
         CoreCommand::Status {} => {
             let count: i64 = tx.query_row("SELECT count(*) FROM projects", [], |r| r.get(0))?;
             let seq: i64 = tx.query_row("SELECT coalesce(max(seq),0) FROM events", [], |r| r.get(0))?;
             let abandoned: i64 = tx.query_row("SELECT count(*) FROM requests WHERE state='abandoned'", [], |r| r.get(0))?;
-            ok(serde_json::json!({"protocol":1,"projects":count,"last_seq":seq,"abandoned_requests":abandoned}))
+            ok(CommandResult::Status { value: StatusReport {
+                protocol: 1,
+                projects: u64::try_from(count).unwrap_or(0),
+                last_seq: u64::try_from(seq).unwrap_or(0),
+                abandoned_requests: u64::try_from(abandoned).unwrap_or(0),
+            } })
         }
         CoreCommand::Doctor {} => {
             let quick_check: String = tx.query_row("PRAGMA quick_check", [], |r| r.get(0))?;
             let foreign_keys: i64 = tx.pragma_query_value(None, "foreign_keys", |r| r.get(0))?;
             let schema: i64 = tx.pragma_query_value(None, "user_version", |r| r.get(0))?;
             let journal: String = tx.pragma_query_value(None, "journal_mode", |r| r.get(0))?;
-            ok(serde_json::json!({"protocol":1,"sqlite_integrity":quick_check,"foreign_keys":foreign_keys == 1,"schema_version":schema,"journal_mode":journal}))
+            ok(CommandResult::Doctor { value: DoctorReport {
+                protocol: 1, sqlite_integrity: quick_check, foreign_keys: foreign_keys == 1,
+                schema_version: u64::try_from(schema).unwrap_or(0), journal_mode: journal,
+            } })
         }
-        CoreCommand::Shutdown {} => ok(serde_json::json!({"shutting_down":true})),
+        CoreCommand::Shutdown {} => ok(CommandResult::Shutdown { value: ShutdownReceipt { shutting_down: true } }),
         _ => invalid("command is owned by the service dispatcher, not the transactional leaf path"),
     };
     // The reply and every mutation/event commit together, then and only then reach IPC.

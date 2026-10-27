@@ -1,0 +1,723 @@
+/* Ironbark controls: buttons, selects, inputs, status pills, code and
+ * markdown content, diff/terminal surfaces. Everything sits on the token
+ * palette; focus is always visible (2px --focus outline). No glass, no
+ * texture, no chrome decoration. */
+
+button {
+  cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--control);
+  border-radius: var(--radius);
+  padding: 5px 12px;
+}
+
+button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+button:active:not(:disabled) {
+  background: var(--selected);
+}
+
+button:disabled {
+  cursor: default;
+  color: var(--disabled);
+  border-color: var(--line);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--focus);
+  border-color: var(--focus);
+}
+
+button.danger {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+button.danger:hover:not(:disabled) {
+  background: var(--error);
+  color: var(--on-accent);
+}
+
+button.subtle {
+  background: none;
+  border-color: transparent;
+  color: var(--secondary);
+  padding: 4px 8px;
+}
+
+button.subtle:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+button.icon {
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--control);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  font-size: var(--text-body);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  color: var(--disabled);
+}
+
+/* Compact inline controls (composer toolbar, header) */
+.control-select {
+  max-width: 220px;
+}
+
+select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Unsupported route options: the reason is rendered, never hidden. */
+.control-select option:disabled {
+  color: var(--disabled);
+}
+
+.reason-note {
+  display: block;
+  font-size: var(--text-small);
+  color: var(--warning);
+  margin-top: 4px;
+  line-height: 1.6;
+}
+
+.reason-note.error {
+  color: var(--error);
+}
+
+/* Status pills (run/action/availability state) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 10px;
+  font-size: var(--text-small);
+  color: var(--secondary);
+  background: var(--raised);
+  white-space: nowrap;
+}
+
+.pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--info);
+  flex: 0 0 auto;
+}
+
+.pill.running .dot {
+  background: var(--accent);
+}
+
+.pill.awaiting_approval .dot,
+.pill.blocked .dot {
+  background: var(--warning);
+}
+
+.pill.reviewing .dot,
+.pill.verifying .dot {
+  background: var(--review);
+}
+
+.pill.succeeded .dot,
+.pill.qualified .dot,
+.pill.ok .dot {
+  background: var(--success);
+}
+
+.pill.failed .dot,
+.pill.unavailable .dot,
+.pill.error .dot {
+  background: var(--error);
+}
+
+.pill.cancelled .dot,
+.pill.paused .dot,
+.pill.unqualified .dot,
+.pill.unknown .dot {
+  background: var(--muted);
+}
+
+/* Code + mono text */
+code,
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+}
+
+pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  line-height: 17px;
+  white-space: pre;
+}
+
+pre code {
+  font-size: inherit;
+  font-family: inherit;
+}
+
+code.inline {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+/* Markdown body (raw HTML from content is never rendered — see markdown.ts) */
+.md {
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.md p {
+  margin: 0 0 10px;
+}
+
+.md p:last-child {
+  margin-bottom: 0;
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: 14px 0 8px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.md ul,
+.md ol {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+
+.md li {
+  margin: 2px 0;
+}
+
+.md blockquote {
+  margin: 8px 0;
+  padding: 4px 12px;
+  border-left: 2px solid var(--line);
+  color: var(--secondary);
+}
+
+.md a {
+  color: var(--info);
+  text-decoration: underline;
+}
+
+.md table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: var(--text-small);
+}
+
+.md th,
+.md td {
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+  text-align: left;
+}
+
+/* Citations */
+.citation-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--control);
+  border-radius: 0;
+  padding: 0 2px;
+  color: var(--info);
+  font-size: var(--text-small);
+}
+
+.citation-link:hover {
+  background: var(--hover);
+  border-bottom-color: var(--info);
+}
+
+.citation-ref {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+}
+
+.citation-panel {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--info);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: var(--text-small);
+}
+
+.citation-panel .citation-panel-head {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.citation-panel .citation-text {
+  white-space: pre-wrap;
+  color: var(--secondary);
+}
+
+.citation-panel.missing,
+.citation-panel.deleted {
+  border-left-color: var(--warning);
+}
+
+/* Attachments */
+.attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  padding: 6px 10px;
+  font-size: var(--text-small);
+  color: var(--secondary);
+}
+
+.attachment-row .digest {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.attachment-row .progress {
+  color: var(--info);
+  font-family: var(--font-mono);
+}
+
+/* Diff viewer */
+.diff {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  line-height: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  background: var(--surface);
+}
+
+.diff .diff-line {
+  display: block;
+  padding: 0 10px;
+  white-space: pre;
+}
+
+.diff .diff-add {
+  background: rgba(188, 196, 146, 0.12);
+  color: var(--success);
+}
+
+.diff .diff-del {
+  background: rgba(238, 142, 121, 0.12);
+  color: var(--error);
+}
+
+.diff .diff-hunk {
+  color: var(--info);
+}
+
+.diff .diff-empty {
+  color: var(--muted);
+  padding: 8px 10px;
+  font-family: var(--font-body);
+}
+
+/* Terminal surface */
+.terminal {
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+  line-height: 18px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  min-height: 160px;
+  max-height: 420px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--secondary);
+}
+
+.terminal .term-err {
+  color: var(--error);
+}
+
+.terminal .term-mute {
+  color: var(--muted);
+}
+
+.terminal-note {
+  font-size: var(--text-small);
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.6;
+}
+
+/* Task graph (lightweight, DOM-based) */
+.graph {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.graph-node {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--control);
+  border-radius: var(--radius);
+  background: var(--raised);
+  padding: 8px 12px;
+}
+
+.graph-node.depth-1 {
+  margin-left: 14px;
+}
+
+.graph-node.depth-2 {
+  margin-left: 28px;
+}
+
+.graph-node .node-title {
+  font-weight: 600;
+  font-size: var(--text-small);
+  color: var(--text);
+}
+
+.graph-node .node-meta {
+  grid-column: 1 / -1;
+  font-size: var(--text-small);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  word-break: break-word;
+}
+
+.graph-node .node-side {
+  align-self: start;
+}
+
+.graph-node.running {
+  border-left-color: var(--accent);
+}
+
+.graph-node.awaiting_approval,
+.graph-node.blocked {
+  border-left-color: var(--warning);
+}
+
+.graph-node.succeeded {
+  border-left-color: var(--success);
+}
+
+.graph-node.failed {
+  border-left-color: var(--error);
+}
+
+/* Tool receipts */
+.receipts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.receipt {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  padding: 6px 10px;
+  font-size: var(--text-small);
+}
+
+.receipt .receipt-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.receipt .receipt-kind {
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.receipt .receipt-detail {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  word-break: break-word;
+  margin-top: 2px;
+}
+
+.receipt.succeeded {
+  border-left: 3px solid var(--success);
+}
+
+.receipt.failed {
+  border-left: 3px solid var(--error);
+}
+
+.receipt.denied {
+  border-left: 3px solid var(--error);
+}
+
+.receipt.awaiting_approval,
+.receipt.executing,
+.receipt.uncertain {
+  border-left: 3px solid var(--warning);
+}
+
+/* Source reader */
+.source-revision {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  padding: 8px 12px;
+  font-size: var(--text-small);
+  color: var(--secondary);
+  margin-bottom: 8px;
+}
+
+.source-reader-text {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 10px 14px;
+  white-space: pre-wrap;
+  font-size: var(--text-small);
+  line-height: 1.7;
+  color: var(--text);
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+/* Approvals */
+.approval-card {
+  border: 1px solid var(--warning);
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius);
+  background: var(--raised);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.approval-card.stale {
+  border-color: var(--error);
+  border-left-color: var(--error);
+  opacity: 0.95;
+}
+
+.approval-card .approval-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.approval-card .approval-title {
+  font-weight: 600;
+}
+
+.approval-card .approval-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.approval-card .stale-note {
+  display: block;
+  margin-top: 8px;
+  color: var(--error);
+  font-size: var(--text-small);
+  line-height: 1.6;
+}
+
+.approval-card .decision-note {
+  margin-top: 8px;
+  font-size: var(--text-small);
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* Memory review */
+.memory-card {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--review);
+  border-radius: var(--radius);
+  background: var(--raised);
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+
+.memory-card .memory-text {
+  white-space: pre-wrap;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.memory-card .memory-meta {
+  font-size: var(--text-small);
+  color: var(--muted);
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  word-break: break-word;
+}
+
+/* Generic lists / notes */
+.note {
+  font-size: var(--text-small);
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.note.warn {
+  color: var(--warning);
+}
+
+.note.err {
+  color: var(--error);
+}
+
+.note.info {
+  color: var(--info);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error-text {
+  color: var(--error);
+}
+
+.success-text {
+  color: var(--success);
+}
+
+.hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 12px 0;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+  color: var(--muted);
+  text-align: center;
+  font-size: var(--text-small);
+  line-height: 1.8;
+}
+
+/* Two-column form grid used by Settings */
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 240px) 1fr;
+  gap: 8px 14px;
+  align-items: center;
+}
+
+.form-grid .form-label {
+  color: var(--muted);
+  font-size: var(--text-small);
+}
+
+/* Tabs within a view */
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  padding: 6px 12px;
+}
+
+.tabs button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tabs button.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}

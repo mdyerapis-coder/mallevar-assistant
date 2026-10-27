@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "ActionOutcome": {
+      "enum": [
+        "succeeded",
+        "failed",
+        "uncertain"
+      ],
+      "type": "string"
+    },
     "ActionSpec": {
       "additionalProperties": false,
       "properties": {
@@ -21,9 +29,7 @@
           "type": "string"
         },
         "policy_version": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/$defs/WireU64"
         },
         "project_id": {
           "format": "uuid",
@@ -61,23 +67,23 @@
           "$ref": "#/$defs/Digest"
         },
         "expires_at": {
-          "format": "int64",
-          "type": "integer"
+          "$ref": "#/$defs/WireI64"
         },
         "id": {
           "format": "uuid",
           "type": "string"
         },
         "policy_version": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/$defs/WireU64"
         },
         "revoked_at": {
-          "format": "int64",
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WireI64"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
@@ -88,6 +94,79 @@
         "policy_version",
         "expected_state_digest",
         "expires_at"
+      ],
+      "type": "object"
+    },
+    "ApprovedTarget": {
+      "additionalProperties": false,
+      "description": "The operator-issued scope for one automation target. Existence of a matching,\nunexpired, un-released scope is the owner's standing consent for that exact\n(kind, target) pair; a worker can never mint one.",
+      "properties": {
+        "expires_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "kind": {
+          "$ref": "#/$defs/TargetKind"
+        },
+        "role": {
+          "$ref": "#/$defs/ScopeRole"
+        },
+        "scope_id": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope_id",
+        "role",
+        "kind",
+        "target_id",
+        "expires_at"
+      ],
+      "type": "object"
+    },
+    "ArtifactRead": {
+      "description": "Authenticated read of a CAS object over the control socket. The object bytes are\nbase64-encoded in the JSON reply so raw, digest-verified bytes can cross the\n1 MiB frame; the CLI decodes and streams them to stdout. Objects beyond the\nrecoverable IPC budget are refused with `artifact_too_large_for_ipc`, never truncated.",
+      "properties": {
+        "bytes": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "data": {
+          "type": "string"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "digest",
+        "bytes",
+        "data"
+      ],
+      "type": "object"
+    },
+    "ArtifactReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "origin_run_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "artifact_id",
+        "digest"
       ],
       "type": "object"
     },
@@ -158,15 +237,156 @@
         }
       ]
     },
+    "AutomationObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "accessibility_tree": true,
+        "backend": {
+          "type": "string"
+        },
+        "image_artifact": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "revision_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "scope_id": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "target_id",
+        "scope_id",
+        "backend",
+        "revision_digest"
+      ],
+      "type": "object"
+    },
+    "AutomationReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "backend": {
+          "type": "string"
+        },
+        "effect": {
+          "$ref": "#/$defs/Effect"
+        },
+        "error": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "grant_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "operation": {
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/ActionOutcome"
+        },
+        "receipt_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "revision_after": {
+          "$ref": "#/$defs/Digest"
+        },
+        "revision_before": {
+          "$ref": "#/$defs/Digest"
+        },
+        "target_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_id",
+        "target_id",
+        "backend",
+        "operation",
+        "outcome",
+        "effect",
+        "revision_before",
+        "revision_after",
+        "receipt_digest"
+      ],
+      "type": "object"
+    },
+    "BackupManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "database_bytes": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "database_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "format": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "objects": {
+          "items": {
+            "$ref": "#/$defs/BackupObject"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "format",
+        "created_at",
+        "database_digest",
+        "database_bytes",
+        "objects"
+      ],
+      "type": "object"
+    },
+    "BackupObject": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "digest",
+        "bytes"
+      ],
+      "type": "object"
+    },
     "BillingObservation": {
       "additionalProperties": false,
       "properties": {
         "cost_microusd": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WireU64"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "state": {
@@ -184,6 +404,68 @@
         "reported"
       ],
       "type": "string"
+    },
+    "BranchProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "type": "string"
+        },
+        "original_message_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "preserved_run_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "prior_effects_undone": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "operation",
+        "preserved_run_ids",
+        "prior_effects_undone"
+      ],
+      "type": "object"
+    },
+    "BranchView": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/MessageView"
+          },
+          "type": "array"
+        },
+        "parent_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/BranchProvenance"
+        }
+      },
+      "required": [
+        "id",
+        "provenance",
+        "messages"
+      ],
+      "type": "object"
     },
     "CapabilityObservation": {
       "additionalProperties": false,
@@ -205,8 +487,7 @@
           "type": "string"
         },
         "observed_at": {
-          "format": "int64",
-          "type": "integer"
+          "$ref": "#/$defs/WireI64"
         },
         "state": {
           "$ref": "#/$defs/CapabilityState"
@@ -228,6 +509,29 @@
         "qualified"
       ],
       "type": "string"
+    },
+    "CapacityReport": {
+      "properties": {
+        "bytes": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "hard_bytes": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "soft_bytes": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "soft_exceeded": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "bytes",
+        "soft_bytes",
+        "hard_bytes",
+        "soft_exceeded"
+      ],
+      "type": "object"
     },
     "CheckReceipt": {
       "additionalProperties": false,
@@ -256,6 +560,43 @@
         "name",
         "passed",
         "details"
+      ],
+      "type": "object"
+    },
+    "CheckpointPhase": {
+      "enum": [
+        "planned",
+        "pre_mutation",
+        "post_mutation",
+        "post_verification",
+        "pre_consequential"
+      ],
+      "type": "string"
+    },
+    "CheckpointRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "manifest": true,
+        "phase": {
+          "$ref": "#/$defs/CheckpointPhase"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "state_digest": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "run_id",
+        "phase",
+        "state_digest",
+        "manifest",
+        "created_at"
       ],
       "type": "object"
     },
@@ -337,23 +678,74 @@
           ]
         },
         "time_end_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WireU64"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "time_start_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WireU64"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       },
       "type": "object"
+    },
+    "CitationView": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string"
+            },
+            "type": {
+              "const": "content",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "deleted",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "missing",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "CitedExcerpt": {
       "additionalProperties": false,
@@ -361,13 +753,72 @@
         "citation": {
           "$ref": "#/$defs/Citation"
         },
+        "disclosure": {
+          "$ref": "#/$defs/DisclosurePolicy"
+        },
+        "project_id": {
+          "format": "uuid",
+          "type": "string"
+        },
         "text": {
           "type": "string"
         }
       },
       "required": [
         "text",
-        "citation"
+        "citation",
+        "project_id",
+        "disclosure"
+      ],
+      "type": "object"
+    },
+    "ClassMetrics": {
+      "additionalProperties": false,
+      "properties": {
+        "abstained": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "accepted": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "invalid": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unavailable": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unqualified": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "wrong": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "accepted",
+        "wrong",
+        "abstained",
+        "invalid",
+        "unavailable",
+        "unqualified"
       ],
       "type": "object"
     },
@@ -423,9 +874,7 @@
           "additionalProperties": false,
           "properties": {
             "after_seq": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": "integer"
+              "$ref": "#/$defs/WireU64"
             },
             "type": {
               "const": "subscribe",
@@ -435,6 +884,981 @@
           "required": [
             "type",
             "after_seq"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "CommandResult": {
+      "description": "The typed success payload of a `CoreReply::Ok`. One variant per public\n`CoreCommand`, tagged by the command's serde `type` via the `command` field,\ncarrying that command's actual leaf result type. A reply can only ever\nunwrap the variant whose command matches the request; a mismatched or echoed\npayload fails serde (unknown/missing command tag) and the TS validator\n(`packages/contracts/src/validate.ts` + `ResultOf<C>`) before any consumer\nsees it. Intentional user JSON stays an explicitly bounded `serde_json::Value`\ninside the leaf DTOs (e.g. `canonical_args`), never this envelope.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "status",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/StatusReport"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "events",
+              "type": "string"
+            },
+            "value": {
+              "items": {
+                "$ref": "#/$defs/EventEnvelope"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "project_list",
+              "type": "string"
+            },
+            "value": {
+              "items": {
+                "$ref": "#/$defs/Project"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "project_create",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Project"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "doctor",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DoctorReport"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "shutdown",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ShutdownReceipt"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "project_policy_set",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ProjectPolicy"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "project_policy_show",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ProjectPolicy"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "artifact_read",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ArtifactRead"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "import_preview",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ImportPreview"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "import_apply",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ImportReceipt"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "backup_create",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/BackupManifest"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "retention_sweep",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RetentionReport"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "object_capacity",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/CapacityReport"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_create",
+              "type": "string"
+            },
+            "value": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_history",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ConversationHistory"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_rename",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Empty"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_search",
+              "type": "string"
+            },
+            "value": {
+              "items": {
+                "$ref": "#/$defs/ConversationSummary"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_export",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ConversationExport"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_edit",
+              "type": "string"
+            },
+            "value": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_queue_turn",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/QueuedTurn"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_regenerate",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/QueuedTurn"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_archive",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Empty"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "conversation_delete",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Empty"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_interrupt",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Empty"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_create",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RunReceipt"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_start",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RunState"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_pause",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RunState"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_resume",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RunState"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_checkpoint",
+              "type": "string"
+            },
+            "value": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_inspect",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RecoveryReport"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_reconcile",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Empty"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_cancel",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RunState"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_observe_stop",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RunState"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "run_native_done",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/RunState"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "knowledge_ingest",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/SourceRevision"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "knowledge_retrieve",
+              "type": "string"
+            },
+            "value": {
+              "items": {
+                "$ref": "#/$defs/CitedExcerpt"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "knowledge_open_citation",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/CitationView"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "knowledge_delete_source",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DeletionReceipt"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "knowledge_build_context",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ContextPackage"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "memory_propose",
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "memory_decide",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/MemoryRecord"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "memory_forget",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/MemoryRecord"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "knowledge_search_memory",
+              "type": "string"
+            },
+            "value": {
+              "items": {
+                "$ref": "#/$defs/MemoryRecord"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "knowledge_embed_index",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/EmbeddingModelIdentity"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "knowledge_embed_query",
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "web_gpt_probe",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/WebGptStatus"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "web_gpt_activate",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/WebGptStatus"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "web_gpt_submit",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/WebGptSubmissionReceipt"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "web_gpt_resubmit",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/WebGptSubmissionReceipt"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "web_gpt_turn",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/WebGptTurnOutput"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "judgment_qualify",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/QualificationRecord"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "judgment_qualification_list",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/DomainQualifications"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "automation_observe",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/AutomationObservation"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "automation_execute",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/AutomationReceipt"
+            }
+          },
+          "required": [
+            "command",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "const": "automation_release",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Empty"
+            }
+          },
+          "required": [
+            "command",
+            "value"
           ],
           "type": "object"
         }
@@ -618,6 +2042,85 @@
       ],
       "type": "object"
     },
+    "ConversationExport": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "conversation_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "format": {
+          "$ref": "#/$defs/ExportFormat"
+        }
+      },
+      "required": [
+        "conversation_id",
+        "format",
+        "content"
+      ],
+      "type": "object"
+    },
+    "ConversationHistory": {
+      "additionalProperties": false,
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "branches": {
+          "items": {
+            "$ref": "#/$defs/BranchView"
+          },
+          "type": "array"
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "title",
+        "archived",
+        "branches"
+      ],
+      "type": "object"
+    },
+    "ConversationSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "archived",
+        "created_at"
+      ],
+      "type": "object"
+    },
     "CoreCommand": {
       "oneOf": [
         {
@@ -637,9 +2140,7 @@
           "additionalProperties": false,
           "properties": {
             "after": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": "integer"
+              "$ref": "#/$defs/WireU64"
             },
             "type": {
               "const": "events",
@@ -709,6 +2210,46 @@
           },
           "required": [
             "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "policy": {
+              "$ref": "#/$defs/ProjectPolicy"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "project_policy_set",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "policy"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "project_policy_show",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id"
           ],
           "type": "object"
         },
@@ -1087,6 +2628,786 @@
             "run_id"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "type": {
+              "const": "run_create",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "task"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "artifacts": {
+              "default": [],
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "native_session": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/SessionRef"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "pin": {
+              "$ref": "#/$defs/RoutePin"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "recorded_pid": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/WireU64"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "recorded_start_time": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/WireI64"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_start",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id",
+            "pin"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_pause",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_resume",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "manifest": {
+              "$ref": "#/$defs/ResultManifest"
+            },
+            "phase": {
+              "$ref": "#/$defs/CheckpointPhase"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_checkpoint",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id",
+            "phase",
+            "manifest"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_inspect",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "decision": {
+              "$ref": "#/$defs/RecoveryDecision"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_reconcile",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id",
+            "decision"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_cancel",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_observe_stop",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "receipt": {
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "run_native_done",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "run_id",
+            "receipt"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "disclosure": {
+              "$ref": "#/$defs/DisclosurePolicy"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "source": {
+              "$ref": "#/$defs/SourceInput"
+            },
+            "type": {
+              "const": "knowledge_ingest",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "source",
+            "disclosure"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            },
+            "type": {
+              "const": "knowledge_retrieve",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "query",
+            "limit"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "citation": {
+              "$ref": "#/$defs/Citation"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "knowledge_open_citation",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "citation"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "source_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "knowledge_delete_source",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "source_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            },
+            "type": {
+              "const": "knowledge_build_context",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "query",
+            "limit"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "type": {
+              "const": "memory_propose",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "text",
+            "source"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "candidate_id": {
+              "type": "string"
+            },
+            "decision": {
+              "$ref": "#/$defs/MemoryDecision"
+            },
+            "edited_text": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "memory_decide",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "candidate_id",
+            "decision"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "record_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "memory_forget",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "record_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            },
+            "type": {
+              "const": "knowledge_search_memory",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "query",
+            "limit"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "$ref": "#/$defs/EmbeddingModelIdentity"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "knowledge_embed_index",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "model"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "model": {
+              "$ref": "#/$defs/EmbeddingModelIdentity"
+            },
+            "project_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "query": {
+              "type": "string"
+            },
+            "type": {
+              "const": "knowledge_embed_query",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "project_id",
+            "model",
+            "query"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "connection": {
+              "$ref": "#/$defs/ConnectionConfig"
+            },
+            "type": {
+              "const": "web_gpt_probe",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "connection"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "connection_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "web_gpt_activate",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "connection_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "items": {
+                "$ref": "#/$defs/ContentPart"
+              },
+              "type": "array"
+            },
+            "idempotency_key": {
+              "type": "string"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "web_gpt_submit",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "run_id",
+            "content",
+            "idempotency_key"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "receipt_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "web_gpt_resubmit",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "run_id",
+            "receipt_digest"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "input": {
+              "$ref": "#/$defs/WebGptTurnInput"
+            },
+            "run_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "web_gpt_turn",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "run_id",
+            "input"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "calibrator_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "domain": {
+              "$ref": "#/$defs/JudgmentDomain"
+            },
+            "report": {
+              "$ref": "#/$defs/EvaluationReportInput"
+            },
+            "type": {
+              "const": "judgment_qualify",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "domain",
+            "report",
+            "calibrator_digest"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "domain": {
+              "$ref": "#/$defs/JudgmentDomain"
+            },
+            "type": {
+              "const": "judgment_qualification_list",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "domain"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "target": {
+              "$ref": "#/$defs/ApprovedTarget"
+            },
+            "type": {
+              "const": "automation_observe",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "target"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "$ref": "#/$defs/ActionSpec"
+            },
+            "expected_state_digest": {
+              "$ref": "#/$defs/Digest"
+            },
+            "grant": {
+              "$ref": "#/$defs/ApprovalGrant"
+            },
+            "type": {
+              "const": "automation_execute",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "action",
+            "grant",
+            "expected_state_digest"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "scope_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "automation_release",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "scope_id"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -1432,7 +3753,9 @@
               "const": "ok",
               "type": "string"
             },
-            "value": true
+            "value": {
+              "$ref": "#/$defs/CommandResult"
+            }
           },
           "required": [
             "type",
@@ -1465,9 +3788,317 @@
         }
       ]
     },
+    "DeletionReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "applied_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "chunks_removed": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "revisions_removed": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "source_id": {
+          "type": "string"
+        },
+        "vectors_removed": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "source_id",
+        "chunks_removed",
+        "vectors_removed",
+        "revisions_removed",
+        "applied_at"
+      ],
+      "type": "object"
+    },
     "Digest": {
       "pattern": "^[0-9a-f]{64}$",
       "type": "string"
+    },
+    "DisclosurePolicy": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "local_only",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "connection_ids": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": {
+              "const": "allowed_connections",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "connection_ids"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "explicit_public",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DoctorReport": {
+      "additionalProperties": false,
+      "description": "`Doctor {}` reply: live SQLite integrity facts.",
+      "properties": {
+        "foreign_keys": {
+          "type": "boolean"
+        },
+        "journal_mode": {
+          "type": "string"
+        },
+        "protocol": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "sqlite_integrity": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "protocol",
+        "sqlite_integrity",
+        "foreign_keys",
+        "schema_version",
+        "journal_mode"
+      ],
+      "type": "object"
+    },
+    "DomainQualifications": {
+      "additionalProperties": false,
+      "description": "All qualification records for a domain: the live enabled one (if any)\nplus the blocked (revoked/failed) ones, newest first.",
+      "properties": {
+        "blocked": {
+          "items": {
+            "$ref": "#/$defs/QualificationRecord"
+          },
+          "type": "array"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/QualificationRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "blocked"
+      ],
+      "type": "object"
+    },
+    "Effect": {
+      "oneOf": [
+        {
+          "enum": [
+            "unchanged"
+          ],
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "bytes_appended": {
+              "properties": {
+                "count": {
+                  "format": "uint",
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "count"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "bytes_appended"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "executed": {
+              "properties": {
+                "description": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "description"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "executed"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "failed": {
+              "properties": {
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "failed"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "EmbeddingModelIdentity": {
+      "additionalProperties": false,
+      "properties": {
+        "connection_id": {
+          "type": "string"
+        },
+        "dimensions": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model_id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "connection_id",
+        "model_id",
+        "version",
+        "dimensions"
+      ],
+      "type": "object"
+    },
+    "Empty": {
+      "additionalProperties": false,
+      "description": "The unit result of commands whose leaf outcome carries no value. Serde\nrenders it `{}`, matching the pre-envelope wire shape of those replies.",
+      "type": "object"
+    },
+    "EvaluationReportInput": {
+      "additionalProperties": false,
+      "description": "The TS `EvaluationReport`, re-derivable and re-gated here. `state` and\n`reasons` on the wire are ignored: the core re-derives them from the raw\ncounts before persisting anything.",
+      "properties": {
+        "claimed_identity": {
+          "$ref": "#/$defs/Digest"
+        },
+        "confidence_method": {
+          "type": "string"
+        },
+        "dataset_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "domain": {
+          "$ref": "#/$defs/JudgmentDomain"
+        },
+        "domain_version": {
+          "type": "string"
+        },
+        "evaluated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WireI64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "holdout": {
+          "$ref": "#/$defs/HoldoutMetrics"
+        },
+        "latency_ms": {
+          "$ref": "#/$defs/LatencyMs"
+        },
+        "observed_identity_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "observed_model_identity": {
+          "type": "string"
+        },
+        "prompt_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "split_digests": {
+          "$ref": "#/$defs/SplitDigests"
+        }
+      },
+      "required": [
+        "domain",
+        "domain_version",
+        "dataset_digest",
+        "prompt_digest",
+        "split_digests",
+        "observed_identity_digest",
+        "observed_model_identity",
+        "claimed_identity",
+        "confidence_method",
+        "holdout",
+        "latency_ms"
+      ],
+      "type": "object"
     },
     "EventEnvelope": {
       "additionalProperties": false,
@@ -1503,13 +4134,10 @@
           ]
         },
         "seq": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "type": "string"
         },
         "timestamp": {
-          "format": "int64",
-          "type": "integer"
+          "type": "string"
         }
       },
       "required": [
@@ -1537,6 +4165,101 @@
         "alphacode"
       ],
       "type": "string"
+    },
+    "HoldoutMetrics": {
+      "additionalProperties": false,
+      "properties": {
+        "abstained": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "accepted": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "by_class": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ClassMetrics"
+          },
+          "type": "object"
+        },
+        "coverage": {
+          "format": "double",
+          "type": "number"
+        },
+        "invalid": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "size": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unavailable": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "unqualified": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "upper_error_bound": {
+          "format": "double",
+          "type": "number"
+        },
+        "wrong_accepted": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "size",
+        "accepted",
+        "wrong_accepted",
+        "abstained",
+        "invalid",
+        "unavailable",
+        "unqualified",
+        "coverage",
+        "upper_error_bound",
+        "by_class"
+      ],
+      "type": "object"
+    },
+    "ImportFile": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "device": {
+          "type": "string"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "inode": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "digest",
+        "bytes",
+        "device",
+        "inode"
+      ],
+      "type": "object"
     },
     "ImportFormat": {
       "oneOf": [
@@ -1572,6 +4295,105 @@
         }
       ]
     },
+    "ImportPreview": {
+      "additionalProperties": false,
+      "properties": {
+        "additive": {
+          "type": "boolean"
+        },
+        "archived_only": {
+          "type": "boolean"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/ImportFile"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "digest",
+        "project_id",
+        "kind",
+        "files",
+        "additive",
+        "archived_only",
+        "warnings"
+      ],
+      "type": "object"
+    },
+    "ImportReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "applied_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "archived_only": {
+          "type": "boolean"
+        },
+        "artifact_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "connection_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string"
+        },
+        "preview_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "project_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "source_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "source_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "preview_digest",
+        "project_id",
+        "kind",
+        "origin",
+        "source_digest",
+        "archived_only",
+        "applied_at"
+      ],
+      "type": "object"
+    },
     "ImportSource": {
       "additionalProperties": false,
       "properties": {
@@ -1589,6 +4411,16 @@
         "path"
       ],
       "type": "object"
+    },
+    "JudgmentDomain": {
+      "enum": [
+        "task_intent",
+        "retrieval_relevance",
+        "handoff_completeness",
+        "evidence_needed",
+        "allowed_route_choice"
+      ],
+      "type": "string"
     },
     "JudgmentInput": {
       "additionalProperties": false,
@@ -1681,9 +4513,7 @@
           "type": "array"
         },
         "latency_ms": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "$ref": "#/$defs/WireU64"
         },
         "model_identity": {
           "type": "string"
@@ -1748,6 +4578,131 @@
         "unavailable"
       ],
       "type": "string"
+    },
+    "LatencyMs": {
+      "additionalProperties": false,
+      "properties": {
+        "mean": {
+          "format": "double",
+          "type": "number"
+        },
+        "p50": {
+          "format": "double",
+          "type": "number"
+        },
+        "p95": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "mean",
+        "p50",
+        "p95"
+      ],
+      "type": "object"
+    },
+    "MemoryDecision": {
+      "enum": [
+        "approve",
+        "edit_and_approve",
+        "reject"
+      ],
+      "type": "string"
+    },
+    "MemoryRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "id": {
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "project_id",
+        "text",
+        "state",
+        "provenance",
+        "created_at"
+      ],
+      "type": "object"
+    },
+    "MessageView": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "origin_branch_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/ContentPart"
+          },
+          "type": "array"
+        },
+        "receipts": {
+          "items": {
+            "$ref": "#/$defs/EventEnvelope"
+          },
+          "type": "array"
+        },
+        "role": {
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TurnSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "origin_branch_id",
+        "role",
+        "parts",
+        "status",
+        "created_at",
+        "receipts"
+      ],
+      "type": "object"
     },
     "ModelDescriptor": {
       "additionalProperties": false,
@@ -1861,6 +4816,31 @@
       ],
       "type": "string"
     },
+    "Project": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "root": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "root",
+        "created_at"
+      ],
+      "type": "object"
+    },
     "ProjectPolicy": {
       "additionalProperties": false,
       "properties": {
@@ -1883,10 +4863,8 @@
           "type": "boolean"
         },
         "max_cost_microusd": {
-          "format": "uint64",
-          "minimum": 0,
           "type": [
-            "integer",
+            "string",
             "null"
           ]
         },
@@ -1921,9 +4899,7 @@
           "$ref": "#/$defs/SpendPolicy"
         },
         "version": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": "integer"
+          "type": "string"
         },
         "write_roots": {
           "items": {
@@ -1978,6 +4954,169 @@
       ],
       "type": "object"
     },
+    "QualificationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptance_coverage": {
+          "format": "double",
+          "type": "number"
+        },
+        "calibrator_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "domain": {
+          "$ref": "#/$defs/JudgmentDomain"
+        },
+        "evaluated_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "holdout_size": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "model_identity": {
+          "type": "string"
+        },
+        "prompt_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "state": {
+          "$ref": "#/$defs/QualificationState"
+        },
+        "upper_error_bound": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": [
+        "domain",
+        "model_identity",
+        "prompt_digest",
+        "state",
+        "upper_error_bound",
+        "acceptance_coverage",
+        "holdout_size",
+        "evaluated_at",
+        "calibrator_digest"
+      ],
+      "type": "object"
+    },
+    "QualificationState": {
+      "enum": [
+        "enabled",
+        "blocked"
+      ],
+      "type": "string"
+    },
+    "QueuedTurn": {
+      "additionalProperties": false,
+      "properties": {
+        "assistant_message_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "branch_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "replayed": {
+          "type": "boolean"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "user_message_id": {
+          "format": "uuid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "branch_id",
+        "user_message_id",
+        "assistant_message_id",
+        "replayed"
+      ],
+      "type": "object"
+    },
+    "RecoveryDecision": {
+      "enum": [
+        "accept_observed",
+        "resume_read_only",
+        "continue_from_checkpoint",
+        "abandon"
+      ],
+      "type": "string"
+    },
+    "RecoveryReport": {
+      "additionalProperties": false,
+      "properties": {
+        "checkpoint": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CheckpointRecord"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_workspace": true,
+        "pending_mutation": {
+          "type": "boolean"
+        },
+        "recommended": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "recorded_pid": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WireU64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "recorded_start_time": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WireI64"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "run_state": {
+          "$ref": "#/$defs/RunState"
+        },
+        "uncertain_actions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "run_id",
+        "run_state",
+        "observed_workspace",
+        "pending_mutation",
+        "uncertain_actions",
+        "recommended"
+      ],
+      "type": "object"
+    },
     "ResultManifest": {
       "additionalProperties": false,
       "properties": {
@@ -2027,6 +5166,29 @@
       ],
       "type": "object"
     },
+    "RetentionReport": {
+      "properties": {
+        "reclaimed_bytes": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "removed_objects": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "removed_staging_files": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "retained_objects": {
+          "$ref": "#/$defs/WireU64"
+        }
+      },
+      "required": [
+        "removed_objects",
+        "removed_staging_files",
+        "reclaimed_bytes",
+        "retained_objects"
+      ],
+      "type": "object"
+    },
     "RoutePin": {
       "additionalProperties": false,
       "properties": {
@@ -2050,6 +5212,39 @@
       "required": [
         "connection_id",
         "model_id"
+      ],
+      "type": "object"
+    },
+    "RunReceipt": {
+      "additionalProperties": false,
+      "description": "What `RunCreate` returns: the durable identities a caller needs to drive the\nrun, plus the state it was born in.",
+      "properties": {
+        "job_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "node_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/RunState"
+        }
+      },
+      "required": [
+        "run_id",
+        "node_id",
+        "job_id",
+        "project_id",
+        "state"
       ],
       "type": "object"
     },
@@ -2086,6 +5281,20 @@
         "failed"
       ],
       "type": "string"
+    },
+    "ScopeRole": {
+      "oneOf": [
+        {
+          "const": "owner_operator",
+          "description": "The operator's own adapter: the only caller that may open a scope.",
+          "type": "string"
+        },
+        {
+          "const": "coding_worker",
+          "description": "A bounded coding worker: receives broker requests only, never the host\nsession bus or the operator's personal browser.",
+          "type": "string"
+        }
+      ]
     },
     "ScoreEvidence": {
       "oneOf": [
@@ -2223,9 +5432,7 @@
           "additionalProperties": false,
           "properties": {
             "after_seq": {
-              "format": "uint64",
-              "minimum": 0,
-              "type": "integer"
+              "$ref": "#/$defs/WireU64"
             },
             "code": {
               "type": "string"
@@ -2281,10 +5488,183 @@
       ],
       "type": "object"
     },
+    "ShutdownReceipt": {
+      "additionalProperties": false,
+      "description": "`Shutdown {}` reply: the daemon acknowledged the request.",
+      "properties": {
+        "shutting_down": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "shutting_down"
+      ],
+      "type": "object"
+    },
+    "SourceInput": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "const": "file",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "path"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "artifact_id": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": {
+              "const": "attachment",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "artifact_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "receipt": {
+              "$ref": "#/$defs/Digest"
+            },
+            "type": {
+              "const": "fetched",
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "url",
+            "receipt"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SourceRevision": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {
+          "$ref": "#/$defs/WireI64"
+        },
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "extractor_id": {
+          "type": "string"
+        },
+        "extractor_version": {
+          "type": "string"
+        },
+        "locators": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "project_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "source_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "project_id",
+        "digest",
+        "mime",
+        "extractor_id",
+        "extractor_version",
+        "locators",
+        "created_at"
+      ],
+      "type": "object"
+    },
     "SpendPolicy": {
       "enum": [
         "free_only",
         "paid_allowed"
+      ],
+      "type": "string"
+    },
+    "SplitDigests": {
+      "additionalProperties": false,
+      "properties": {
+        "calibration": {
+          "$ref": "#/$defs/Digest"
+        },
+        "development": {
+          "$ref": "#/$defs/Digest"
+        },
+        "holdout": {
+          "$ref": "#/$defs/Digest"
+        }
+      },
+      "required": [
+        "development",
+        "calibration",
+        "holdout"
+      ],
+      "type": "object"
+    },
+    "StatusReport": {
+      "additionalProperties": false,
+      "description": "`Status {}` reply: durable counters, all on the exact numeric wire (counts\nare SQLite integers, not JS-safe by construction).",
+      "properties": {
+        "abandoned_requests": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "last_seq": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "projects": {
+          "$ref": "#/$defs/WireU64"
+        },
+        "protocol": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "protocol",
+        "projects",
+        "last_seq",
+        "abandoned_requests"
+      ],
+      "type": "object"
+    },
+    "TargetKind": {
+      "description": "A target kind the broker may scope authority over. `DocumentFile` is the\ncore-owned, byte-verified document model (the offline-qualifiable backend);\n`BrowserProfile` and `NativeWindow` are live backends that require the\npinned AlphaCode executor.",
+      "enum": [
+        "browser_profile",
+        "native_window",
+        "document_file"
       ],
       "type": "string"
     },
@@ -2342,6 +5722,37 @@
       ],
       "type": "object"
     },
+    "TurnSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_receipts": {
+          "items": {
+            "$ref": "#/$defs/ArtifactReceipt"
+          },
+          "type": "array"
+        },
+        "context": {
+          "$ref": "#/$defs/ContextPackage"
+        },
+        "disclosure_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "policy": {
+          "$ref": "#/$defs/ProjectPolicy"
+        },
+        "route": {
+          "$ref": "#/$defs/RoutePin"
+        }
+      },
+      "required": [
+        "route",
+        "context",
+        "disclosure_digest",
+        "policy",
+        "artifact_receipts"
+      ],
+      "type": "object"
+    },
     "UsageObservation": {
       "additionalProperties": false,
       "properties": {
@@ -2349,11 +5760,13 @@
           "$ref": "#/$defs/BillingObservation"
         },
         "cost_microusd": {
-          "format": "uint64",
-          "minimum": 0,
-          "type": [
-            "integer",
-            "null"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WireU64"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "input_tokens": {
@@ -2387,6 +5800,274 @@
         "provider",
         "unknown"
       ],
+      "type": "string"
+    },
+    "WebGptActivationState": {
+      "description": "Activation state of a WebGPT connection as observed by the core.",
+      "oneOf": [
+        {
+          "const": "not_installed",
+          "description": "The pinned sidecar bundle is not present under the core data dir.",
+          "type": "string"
+        },
+        {
+          "const": "not_activated",
+          "description": "The sidecar is present and pinned, but no owner activation exists yet.",
+          "type": "string"
+        },
+        {
+          "const": "activated",
+          "description": "The owner has activated the isolated profile; a genuine turn can run.",
+          "type": "string"
+        },
+        {
+          "const": "unavailable",
+          "description": "Present but unusable: non-bridge connection, pinned sidecar digest\nmismatch, or a profile that drifted after activation. Never used\nsilently.",
+          "type": "string"
+        }
+      ]
+    },
+    "WebGptStatus": {
+      "additionalProperties": false,
+      "description": "The observed WebGPT connection state. `reason` is the exact, non-secret\ncause whenever the state is not `Activated`.",
+      "properties": {
+        "profile_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sidecar_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/WebGptActivationState"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    },
+    "WebGptSubmissionReceipt": {
+      "additionalProperties": false,
+      "description": "A durable WebGPT submission receipt. `idempotency_key` is the frame request\nID (the durable identity); `digest` is the receipt's own SHA-256 (over the\nreceipt content excluding the digest field) and its CAS path is\n`webgpt_submission/<key>/<digest>`.",
+      "properties": {
+        "digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "idempotency_key": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "image_digests": {
+          "description": "Image parts the sidecar received, as CAS objects owned by the run's\nproject; each digest is the image bytes' content digest.",
+          "items": {
+            "$ref": "#/$defs/Digest"
+          },
+          "type": "array"
+        },
+        "native_message_id": {
+          "description": "The native message id exactly as the sidecar wrote it. Absent when the\nsend could not be confirmed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "original": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Set on a duplicate view: the digest of the original send's receipt."
+        },
+        "profile_digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The profile digest at send time, binding the receipt to the exact\nactivation the turn ran under."
+        },
+        "prompt_text": {
+          "description": "The prompt text (all text parts, in order), kept for the audit trail.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Human-readable cause for non-submitted states (never a secret).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "sidecar_version": {
+          "description": "The pinned sidecar version that produced this receipt.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/WebGptSubmissionState"
+        },
+        "submission_digest": {
+          "$ref": "#/$defs/Digest",
+          "description": "SHA-256 of the canonical content; a same-key/different-content submit is\na conflict, never a silent overwrite."
+        },
+        "superseded_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Digest"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Set on a superseded view: the digest of the resubmit receipt."
+        },
+        "timestamp": {
+          "$ref": "#/$defs/WireI64"
+        }
+      },
+      "required": [
+        "digest",
+        "run_id",
+        "idempotency_key",
+        "state",
+        "submission_digest",
+        "prompt_text",
+        "timestamp"
+      ],
+      "type": "object"
+    },
+    "WebGptSubmissionState": {
+      "description": "Terminal state of one WebGPT submission.",
+      "oneOf": [
+        {
+          "const": "submitted",
+          "description": "The pinned sidecar confirmed the native send (native_message_id present).",
+          "type": "string"
+        },
+        {
+          "const": "failed",
+          "description": "The sidecar failed, or recovery found no native confirmation (unknown\noutcome — explicit, never implicitly retried).",
+          "type": "string"
+        },
+        {
+          "const": "duplicate",
+          "description": "A repeat of the same idempotency key and content: the stored receipt is\nreturned, no second native send happens.",
+          "type": "string"
+        },
+        {
+          "const": "superseded",
+          "description": "Superseded by a `resubmit`: retained for the audit trail; the original\nreceipt's identity is unchanged, this view adds `superseded_by`.",
+          "type": "string"
+        }
+      ]
+    },
+    "WebGptTurnInput": {
+      "additionalProperties": false,
+      "description": "Input to a genuine WebGPT turn (W2). Image parts carry base64 inline data\n(`data:<mime>;base64,<data>`); every image is stored in the run's project\nCAS before the sidecar runs.",
+      "properties": {
+        "content": {
+          "items": {
+            "$ref": "#/$defs/ContentPart"
+          },
+          "type": "array"
+        },
+        "conversation_id": {
+          "description": "Native conversation to continue, when the sidecar reports one. A turn\nnever opens a fresh chat implicitly: continuation only follows a\nsidecar-confirmed conversation id, never a retry of a failed send.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "content"
+      ],
+      "type": "object"
+    },
+    "WebGptTurnOutput": {
+      "additionalProperties": false,
+      "description": "The native WebGPT response with its provenance.",
+      "properties": {
+        "conversation_id": {
+          "description": "Native conversation identifier as reported by the sidecar.",
+          "type": "string"
+        },
+        "model": {
+          "description": "The native model label as reported by the sidecar; the core never\nsubstitutes its own identity.",
+          "type": "string"
+        },
+        "native_message_id": {
+          "description": "The native message id exactly as the sidecar wrote it (its\nconfirmation file — not core-generated).",
+          "type": "string"
+        },
+        "profile_digest": {
+          "$ref": "#/$defs/Digest"
+        },
+        "response_text": {
+          "description": "The native reply text exactly as the sidecar returned it.",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "sidecar_version": {
+          "type": "string"
+        },
+        "timestamp": {
+          "$ref": "#/$defs/WireI64"
+        }
+      },
+      "required": [
+        "run_id",
+        "native_message_id",
+        "conversation_id",
+        "model",
+        "response_text",
+        "sidecar_version",
+        "profile_digest",
+        "timestamp"
+      ],
+      "type": "object"
+    },
+    "WireI64": {
+      "description": "canonical signed 64-bit decimal string (-9223372036854775808..=9223372036854775807)",
+      "format": "wire-i64",
+      "pattern": "^(0|-?[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "WireU64": {
+      "description": "canonical unsigned 64-bit decimal string (0..=18446744073709551615)",
+      "format": "wire-u64",
+      "pattern": "^(0|[1-9][0-9]*)$",
       "type": "string"
     },
     "WorkerEvent": {

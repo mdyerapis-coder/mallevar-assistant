@@ -4,7 +4,8 @@ import { cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Subprocess } from "bun";
-import type { BackupManifest, ImportPreview, ImportReceipt, RestoreReport } from "../../packages/contracts/src/generated";
+import { Database } from "bun:sqlite";
+import type { BackupManifest, ImportPreview, ImportReceipt, RecoveryReport, RestoreReport, RunReceipt } from "../../packages/contracts/src/generated";
 
 // Exercises actual future canonical CLI operations. Unsupported commands fail;
 // this script never synthesizes a database, a receipt, or a successful response.
@@ -41,7 +42,7 @@ async function command(env: SmokeEnvironment, args: string[], expectedCode = 0):
   try {
     const [stdout, stderr, code] = await deadline(Promise.all([new Response(child.stdout).arrayBuffer(), new Response(child.stderr).text(), child.exited]));
     if (expectedCode === 0) assert.equal(code, 0, `${args.join(" ")}: ${stderr}`);
-    else { assert.notEqual(code, 0, "negative restore unexpectedly succeeded"); assert.match(stderr + Buffer.from(stdout).toString(), new RegExp(expectedCode === 1 ? "IntegrityMismatch" : "NamespaceExists")); }
+    else { assert.notEqual(code, 0, "negative restore unexpectedly succeeded"); assert.match(stderr + Buffer.from(stdout).toString(), new RegExp(expectedCode === 1 ? "IntegrityMismatch" : expectedCode === 2 ? "NamespaceExists" : "UnknownBackupSchema")); }
     return Buffer.from(stdout);
   } finally { if (child.exitCode === null) { child.kill("SIGKILL"); await child.exited; } }
 }
@@ -90,11 +91,11 @@ try {
   assert(imported.artifact_id && imported.source_id);
   assert.deepEqual(await command(originalEnv, ["artifact", "read", "--project", project.id, "--id", imported.artifact_id]), sourceBytes);
   // This is a real queued scheduler run, not a fake native completion fixture.
-  const run = await json<{ id: string }>(originalEnv, ["run", "create", "--project", project.id, "--workspace", temp]);
+  const run = await json<RunReceipt>(originalEnv, ["run", "create", "--project", project.id, "--task", "queued backup smoke work", "--workspace", temp]);
   const checkpointFile = join(temp, "checkpoint-manifest.json");
-  await writeFile(checkpointFile, JSON.stringify({ run_id: run.id, artifacts: [imported.artifact_id], checks: [], acceptance_satisfied: false, unresolved: ["queued work; not executed"] }));
-  const checkpoint = await json<{ artifact_id: string }>(originalEnv, ["checkpoint", "capture", "--run", run.id, "--phase", "planned", "--manifest", checkpointFile]);
-  const checkpointBytes = await command(originalEnv, ["artifact", "read", "--project", project.id, "--id", checkpoint.artifact_id]);
+  await writeFile(checkpointFile, JSON.stringify({ run_id: run.run_id, artifacts: [imported.artifact_id], checks: [], acceptance_satisfied: false, unresolved: ["queued work; not executed"] }));
+  const checkpointArtifact = await json<string>(originalEnv, ["checkpoint", "capture", "--project", project.id, "--run", run.run_id, "--phase", "planned", "--manifest", checkpointFile]);
+  const checkpointBytes = await command(originalEnv, ["artifact", "read", "--project", project.id, "--id", checkpointArtifact]);
   // Unique runtime/vault sentinel is actual file material that must not export.
   await writeFile(join(runtime(originalEnv), "private-lease-sentinel"), secret, { mode: 0o600 });
   const native = join(temp, "native-harness"); await mkdir(native, { mode: 0o700 }); await writeFile(join(native, "credentials"), secret, { mode: 0o600 });
@@ -109,14 +110,15 @@ try {
   // Core remains live throughout online backup.
   const liveStatus = await json<{ projects: number }>(originalEnv, ["status"]); assert.equal(liveStatus.projects, 1);
   const report = await json<RestoreReport>(restoredEnv, ["backup", "restore", "--source", backup, "--new-namespace"]);
-  assert.equal(report.stopped, true); assert(report.blocked_runs >= 1);
+  assert.equal(report.stopped, true); assert(BigInt(report.blocked_runs) >= 1n);
   assert(!(await exists(runtime(restoredEnv)))); assert(!(await exists(join(restoredEnv.XDG_STATE_HOME, "ironbark-assistant"))));
   restoredDaemon = await start(restoredEnv);
   assert.deepEqual(await command(restoredEnv, ["artifact", "read", "--project", project.id, "--id", imported.artifact_id]), sourceBytes);
-  assert.deepEqual(await command(restoredEnv, ["artifact", "read", "--project", project.id, "--id", checkpoint.artifact_id]), checkpointBytes);
-  const restoredRun = await json<{ state: string }>(restoredEnv, ["run", "inspect", "--run", run.id]); assert.equal(restoredRun.state, "blocked");
-  const processStatus = await json<{ active_workers: number }>(restoredEnv, ["status"]);
-  assert.equal(processStatus.active_workers, 0, "actual process manager reports a restored worker");
+  assert.deepEqual(await command(restoredEnv, ["artifact", "read", "--project", project.id, "--id", checkpointArtifact]), checkpointBytes);
+  const restoredRun = await json<RecoveryReport>(restoredEnv, ["run", "inspect", "--project", project.id, "--run", run.run_id]); assert.equal(restoredRun.run_state, "blocked");
+  const processStatus = await json<{ protocol: number; projects: number }>(restoredEnv, ["status"]);
+  assert.equal(processStatus.protocol, 1, "restored core is not the canonical protocol");
+  assert.equal(processStatus.projects, 1, "restored namespace lost its restored project");
   await assertNoChildren(restoredDaemon.pid);
   assert.equal((await readFile(join(native, "credentials"), "utf8")), secret);
   const doctor = await json<{ sqlite_integrity: string; foreign_keys: boolean }>(restoredEnv, ["doctor", "--json"]); assert.equal(doctor.sqlite_integrity, "ok"); assert.equal(doctor.foreign_keys, true);
@@ -132,8 +134,22 @@ try {
     const env = environment(`rejected-${mode}`); await command(env, ["backup", "restore", "--source", broken, "--new-namespace"], 1);
     assert(!(await exists(data(env)))); assert(!(await exists(runtime(env))));
   }
+  const unknownBackup = join(temp, "backup-unknown-schema");
+  await cp(backup, unknownBackup, { recursive: true });
+  const unknownDatabase = join(unknownBackup, "core.sqlite3");
+  const unreviewed = new Database(unknownDatabase);
+  try { unreviewed.exec("CREATE TABLE future_object_references(id TEXT PRIMARY KEY, body TEXT NOT NULL)"); }
+  finally { unreviewed.close(); }
+  const unknownBytes = await readFile(unknownDatabase);
+  const unknownManifest = { ...manifest, database_digest: sha256(unknownBytes), database_bytes: unknownBytes.length };
+  await writeFile(join(unknownBackup, "manifest.json"), JSON.stringify(unknownManifest));
+  const unknownEnv = environment("rejected-schema");
+  await command(unknownEnv, ["backup", "restore", "--source", unknownBackup, "--new-namespace"], 3);
+  assert(!(await exists(data(unknownEnv))));
+  assert(!(await exists(runtime(unknownEnv))));
+  assert.equal(sha256(await readFile(unknownDatabase)), unknownManifest.database_digest);
   await stop(originalEnv, daemon); daemon = undefined;
-  console.log(JSON.stringify({ source_hash: sha256(sourceBytes), checkpoint_hash: sha256(checkpointBytes), manifest_objects: manifest.objects.length, restored_runs: "blocked", secret_sentinel: "absent", native_target: "untouched", corrupt_and_missing: "rejected before install", sqlite_integrity: doctor.sqlite_integrity, native_workers: "none observed" }));
+  console.log(JSON.stringify({ source_hash: sha256(sourceBytes), checkpoint_hash: sha256(checkpointBytes), manifest_objects: manifest.objects.length, restored_runs: "blocked", secret_sentinel: "absent", native_target: "untouched", corrupt_and_missing: "rejected before install", unknown_schema: "rejected before install with input unchanged", sqlite_integrity: doctor.sqlite_integrity, native_workers: "none observed" }));
 } finally {
   for (const child of [daemon, restoredDaemon]) if (child && child.exitCode === null) { child.kill("SIGINT"); try { await deadline(child.exited, 5000); } catch { child.kill("SIGKILL"); await child.exited; } }
   await rm(temp, { recursive: true, force: true });

@@ -14,8 +14,10 @@
 #                                 the containment code requires it there
 #
 # Desktop integration: an honest headless application entry (the core daemon is
-# the installed surface; there is no GUI yet). The emblem icon is original art,
-# not derived from the imagery pack (artwork rights disposition pending).
+# the installed surface). ironbark-desktop is installed but carries no launcher
+# until the desktop surface is qualified (plan D2-D5). The emblem icon is
+# original art, not derived from the imagery pack (artwork rights disposition
+# pending).
 
 pkgname=ironbark-assistant
 pkgver=0.1.0
@@ -24,8 +26,10 @@ pkgdesc="Standalone workstation assistant: Rust core (SQLite, IPC, policy, conta
 arch=(x86_64)
 url="https://github.com/mdyerapis-coder/ironbark-assistant"
 license=(MIT)
-depends=(glibc bubblewrap)
-makedepends=(rust desktop-file-utils gtk-update-icon-cache)
+depends=(glibc bubblewrap webkit2gtk-4.1)
+# Arch's WebKitGTK package also supplies JavaScriptCore. The desktop does not
+# enable Tauri's optional appindicator tray feature.
+makedepends=(rust desktop-file-utils gtk-update-icon-cache librsvg openssl)
 optdepends=(
     "bun: provider/JEV adapter worker runtime"
 )
@@ -45,16 +49,17 @@ build() {
     # flags for the build so the bundled C compiles to plain objects.
     CFLAGS=$(printf '%s' "${CFLAGS:-}" | sed -E 's/(^|[[:space:]])-flto(=[A-Za-z0-9_-]+)?//g')
     CXXFLAGS=$(printf '%s' "${CXXFLAGS:-}" | sed -E 's/(^|[[:space:]])-flto(=[A-Za-z0-9_-]+)?//g')
-    cargo build --release -p ironbark-core -p ironbark-cli
+    cargo build --release -p ironbark-core -p ironbark-cli -p ironbark-desktop
 }
 
 package() {
     cd "${srcdir}/ironbark-assistant-${pkgver}"
-    install -Dm755 target/release/ironbark-core   -t "${pkgdir}/usr/bin"
-    install -Dm755 target/release/ironbark-cli    -t "${pkgdir}/usr/bin"
-    # The containment code binds this at the EXACT /opt/ironbark/namespace-bridge
+    local release_dir="${CARGO_TARGET_DIR:-target}/release"
+    install -Dm755 "${release_dir}/ironbark-core"   -t "${pkgdir}/usr/bin"
+    install -Dm755 "${release_dir}/ironbark-cli"    -t "${pkgdir}/usr/bin"
+    install -Dm755 "${release_dir}/ironbark-desktop" -t "${pkgdir}/usr/bin"
     # path inside worker namespaces, so the installed name carries the hyphen.
-    install -Dm755 target/release/namespace_bridge "${pkgdir}/opt/ironbark/namespace-bridge"
+    install -Dm755 "${release_dir}/namespace_bridge" "${pkgdir}/opt/ironbark/namespace-bridge"
     install -Dm644 LICENSE  -t "${pkgdir}/usr/share/licenses/${pkgname}"
     install -Dm644 README.md -t "${pkgdir}/usr/share/doc/${pkgname}"
     install -Dm644 packaging/desktop/ironbark-assistant.desktop -t "${pkgdir}/usr/share/applications"

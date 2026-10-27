@@ -5,7 +5,7 @@ import { AlphaNativeClient, canonical, object, permissionReply, type NativeActio
 
 /** These callbacks cross the trusted Rust core boundary; never implement policy in this worker. */
 export type AlphaPermissionHost = {
-  state(input: OpenSessionInput, turn?: TurnInput): Promise<{ policy_version: number; state_digest: string }>;
+  state(input: OpenSessionInput, turn?: TurnInput): Promise<{ policy_version: string; state_digest: string }>;
   prepareAction(request: NativePermission, input: OpenSessionInput): Promise<ActionSpec>;
   verifyAnswer(answer: PermissionAnswer, request: NativePermission): Promise<boolean>;
   recordNativeEvent(event: Record<string, unknown>, input: OpenSessionInput): Promise<void>;

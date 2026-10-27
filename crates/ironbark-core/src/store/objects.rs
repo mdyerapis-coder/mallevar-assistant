@@ -14,8 +14,8 @@ pub const DEFAULT_ITEM_BYTES: u64 = 50 * 1024 * 1024;
 #[derive(Debug, Clone, Copy)]
 pub struct ObjectLimits { pub item_bytes: u64, pub soft_bytes: u64, pub hard_bytes: u64 }
 impl Default for ObjectLimits { fn default() -> Self { Self { item_bytes: DEFAULT_ITEM_BYTES, soft_bytes: 2*1024*1024*1024, hard_bytes: 10*1024*1024*1024 } } }
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, TS)]
-pub struct CapacityReport { #[ts(type="number")] pub bytes: u64, #[ts(type="number")] pub soft_bytes: u64, #[ts(type="number")] pub hard_bytes: u64, pub soft_exceeded: bool }
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
+pub struct CapacityReport { #[serde(with="crate::contracts::wire::u64")] #[schemars(with="crate::contracts::wire::WireU64Schema")] #[ts(type="string")] pub bytes: u64, #[serde(with="crate::contracts::wire::u64")] #[schemars(with="crate::contracts::wire::WireU64Schema")] #[ts(type="string")] pub soft_bytes: u64, #[serde(with="crate::contracts::wire::u64")] #[schemars(with="crate::contracts::wire::WireU64Schema")] #[ts(type="string")] pub hard_bytes: u64, pub soft_exceeded: bool }
 
 static INGESTION: LazyLock<Mutex<HashMap<PathBuf, Weak<Semaphore>>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 #[derive(Clone)]

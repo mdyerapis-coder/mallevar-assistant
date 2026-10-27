@@ -4,10 +4,11 @@ The native daemon owns SQLite, the authenticated local socket, policy and the se
 dispatcher. The implemented command surface covers C1 project/status/events/doctor/shutdown,
 C5 objects (artifact read, additive import, snapshot backup, offline stopped restore,
 conservative retention, capacity) and P2 conversation-tree operations (create, history,
-rename, search, export, edit, queue turn, regenerate, archive, delete). Run scheduling and
-live provider launch (C4) are not integrated: `run_interrupt` is a deliberate stub and there
-is no `run create`/`checkpoint`/`run inspect` command. Native harnesses, provider accounts,
-JEV semantic qualification and desktop release are not qualified by this core.
+rename, search, export, edit, queue turn, regenerate, archive, delete). Manual `run create`,
+`run start`, checkpoint, inspect and reconcile commands are implemented. Core-owned live
+provider launch and resumable native control remain incomplete: `run_interrupt` returns
+`run_dependency_missing`. Native harnesses, provider accounts, JEV semantic qualification
+and desktop release are not qualified by this core.
 
 ## Build and run
 
@@ -116,6 +117,14 @@ dispatch-claimed), fsynced with a `restore.json` marker, then atomically no-repl
 into the freshly selected namespace. An existing namespace — even one whose core has stopped —
 is refused (`NamespaceExists`). It launches no worker and reacquires no native session.
 
+Schema-1 backup, restore and retention use `store::schema::StorageSchema`. Every durable
+table/column/index and reference variant is reviewed; unknown schema refuses collection
+before unlinking. Only typed owned references root CAS bytes. Human JSON-looking text,
+external file hashes and policy/model identities do not become object references.
+Sanitization preserves control identities and nonsecret raw logprob tokens. Restore
+disables imported work, dispatch, grants, native associations and enrollment/check
+authority; original checkpoint CAS bytes remain historical evidence, not fresh checks.
+
 ## Observed verification
 
 On this workstation the integrated Rust suite and the actual prebuilt daemon/CLI were exercised
@@ -145,6 +154,73 @@ bun qa/smoke/worker-containment.ts
   exact source bytes from a daemon started in the restored namespace, and a second restore
   into an existing namespace was refused with `NamespaceExists`.
 
-This is not a complete application, native harness, provider account, JEV domain or release
-qualification. C4 run scheduling/live provider launch, the live provider/JEV/AlphaCode
-smokes and the `run create`/`checkpoint` CLI commands remain outstanding.
+That historical verification is not complete application, native harness, provider account,
+JEV domain or release qualification. Manual run/checkpoint/inspection CLI operations now
+exist; core-owned live launch, resumable interruption and live qualification remain unfinished.
+
+## Run scheduling and crash reconciliation (C4)
+
+A run is the durable unit of work. It is born `queued` and every state change is
+applied through the transition table in `crates/ironbark-core/src/scheduler/state.rs`;
+no worker event and no frontend label writes `runs.state`.
+
+| Command | Effect |
+| --- | --- |
+| `run create` | Mints the job/node/run chain for one task text. Requires an existing project; the task is bounded and redacted. Returns `{run_id, node_id, job_id, state}`. |
+| `run start` | Admits `queued → ready` through the table, records the native session, partial artifacts and the observed process identity (pid + boot start ticks), then `ready → running`. |
+| `run checkpoint` | Captures a phase-tagged checkpoint (`planned`, `pre_mutation`, `post_mutation`, `post_verification`, `pre_consequential`) plus its manifest as a CAS object; returns the artifact id. |
+| `run inspect` | Read-only crash inspection: durable state, latest checkpoint, the recorded process identity (live / start-time match / `reused`), pending mutation and uncertain actions, plus recommended decisions. |
+| `run reconcile` | Applies one owner decision: `accept_observed`, `resume_read_only`, `continue_from_checkpoint` or `abandon`, under current authority. |
+| `run pause` / `run resume` | Retains the native session and partial artifacts; a UI disconnect never pauses a run. |
+| `run cancel` / `run observe_stop` | A cancel *request* only reaches `cancelling`; `cancelled` requires the observed stop receipt. |
+| `run native_done` | Native completion parks the run in `reviewing`. Success requires an explicit acceptance backed by a passing post-verification checkpoint. |
+
+Reconciliation rules that the code enforces:
+
+- `accept_observed` is refused while any consumed grant has no durable outcome
+  (`outcome_unresolved`), and refused unless the latest checkpoint is a passing
+  post-verification checkpoint (`acceptance_evidence_missing`) — a native
+  completion label is never a false success.
+- `continue_from_checkpoint` refuses to reuse a grant that is stale under the
+  current policy (`stale_grant`); the run parks in `awaiting_approval` for fresh
+  owner approval instead.
+- A mutation without a durable consumption receipt moves the run to `blocked`
+  (`mutation_without_receipt`) and is not performed.
+- Inspection never signals anything: a PID recycled by an unrelated process is
+  reported (`reused: true`), never killed, and no uncertain mutation is replayed.
+
+The recorded start time must be the value the core can observe for that pid
+(`/proc/<pid>/stat` field 22, clock ticks since boot). A wall-clock value is
+misread as a recycled PID.
+
+## Run and checkpoint CLI commands
+
+The scheduler lifecycle is exposed through typed CLI subcommands, each printing
+exactly one JSON DTO on stdout (the core's own DTO — never a re-shaped copy):
+
+| Command | Effect |
+| --- | --- |
+| `run create --project <id> --task <text> [--workspace <dir>]` | Creates the queued job/node/run chain and prints the `RunReceipt`. `--workspace` is recorded as an explicit note in the task text: the protocol's `RunCreate` carries `project_id` + `task` only. |
+| `run start --project <id> --run <id> [--connection <id>] [--model <id>] [--harness <kind>]` | Admits the queued run and starts it; the pin flags build the `RoutePin`. |
+| `run pause` / `run resume` / `run cancel` / `run observe-stop` / `run native-done` | The matching lifecycle transition. A cancel *request* never becomes a stop receipt; `observe-stop` carries the observed stop. |
+| `run inspect --project <id> --run <id>` | Prints the `RecoveryReport` (`run_state`, `recorded_pid`, `pending_mutation`, `uncertain_actions`, `checkpoint`, `recommended`). |
+| `run reconcile --project <id> --run <id> --decision <accept-observed\|resume-read-only\|continue-from-checkpoint\|abandon>` | Applies one reconciliation decision under current authority. |
+| `checkpoint capture --project <id> --run <id> --phase <planned\|pre-mutation\|post-mutation\|post-verification\|pre-consequential> --manifest <file>` | Parses the manifest file as a `ResultManifest`, captures the checkpoint as a CAS object and prints the artifact id. |
+
+The generic escape hatch remains available for anything not yet given a typed
+subcommand: `ironbark-cli command --request-id <uuid> '<CoreCommand JSON>'`.
+
+## Native adapter transport boundary
+
+ACP partial events are delivered while the native turn is active. Denial without a native
+reject option returns cancellation, never an allow option. Interrupt waits for the actual
+native `cancelled` response; a local request is not cancellation evidence. Session control
+checks the complete pinned session identity, including project, cwd, harness and version,
+without trusting mutation of a returned reference.
+
+Only an explicit native `end_turn` is success; missing or unknown reasons, refusal and
+budget exhaustion fail. EOF/error rejects pending native RPC calls rather than allowing
+them to expire as misleading request timeouts. A real isolated ACP executable completed
+two interrupted partial-output turns in one process, then exited on close. This is adapter
+transport evidence only: core `run_interrupt`, private managed bridge, live compatibility,
+native pause/resume and owned partial-artifact persistence are separate acceptance gates.

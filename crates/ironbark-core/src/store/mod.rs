@@ -3,8 +3,10 @@ pub mod events;
 pub mod imports;
 pub mod migrations;
 pub mod objects;
+pub mod preflight;
 pub mod requests;
 pub mod retention;
+pub mod schema;
 
 use std::{os::fd::AsRawFd, path::Path, sync::Arc};
 use tokio::sync::{mpsc, oneshot, Notify};
@@ -115,4 +117,18 @@ impl Store {
         }).await
     }
     pub fn notification(&self) -> Arc<Notify> { self.changed.clone() }
+}
+
+impl Default for Store {
+    fn default() -> Self {
+        let (sender, mut receiver) = mpsc::channel::<Operation>(64);
+        let changed = Arc::new(Notify::new());
+        std::thread::Builder::new().name("ironbark-sqlite-default".into()).spawn(move || {
+            let mut conn = Connection::open_in_memory().expect("in-memory SQLite");
+            migrations::migrate(&mut conn).expect("migrations");
+            let mut conn = conn;
+            while let Some(operation) = receiver.blocking_recv() { operation(&mut conn); }
+        }).expect("sqlite thread");
+        Self { sender, changed }
+    }
 }

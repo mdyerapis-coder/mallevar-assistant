@@ -1,0 +1,178 @@
+/* Standalone foundations. Adapt these to your app's existing layout. */
+* {box-sizing:border-box}
+body {margin:0}
+header {display:flex;align-items:center}
+button,input,select,textarea {font:inherit;padding:8px 12px;border:1px solid}
+button {cursor:pointer}
+button:disabled {opacity:.55}
+.card,.pill,.badge,.stat-box {border:1px solid;border-radius:8px}
+.row {display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.grid {display:grid}
+label {display:block;margin:0 0 6px}
+.pill {display:inline-flex;gap:6px;align-items:center;padding:4px 10px}
+.hidden {display:none}
+
+/* Ironbark application skin v1 — self-contained for the loopback desktop shell. */
+:root {
+ color-scheme:dark;
+ --bg:#0E0C0B; --panel:#161310; --panel-2:#1E1915; --panel-3:#29221C;
+ --panel-alt:var(--panel-2); --panel2:var(--panel-2); --chip:var(--panel-2);
+ --line:#504236; --border:var(--line); --control:#8A7868;
+ --fg:#E6D8C8; --muted:#B5A492; --dim:var(--muted); --faint:var(--muted);
+ --accent:#E09040; --focus:#FFC56A; --on-accent:#1A120C; --accent-dim:#40301F;
+ --ok:#BCC492; --ok-dim:#252A1D; --warn:#FFC56A; --warn-dim:#392B19;
+ --err:#EE8E79; --err-dim:#38201A; --info:#A2BFD0; --purple:#C5ACCE;
+ --sans:'Noto Sans',system-ui,sans-serif; --mono:'Noto Sans Mono',ui-monospace,monospace;
+ --radius:8px;
+}
+:root[data-appearance="light"] {
+ color-scheme:light;
+ --bg:#F4EEE6; --panel:#FFFCF8; --panel-2:#ECE3D8; --panel-3:#E4D8C9;
+ --line:#C4B4A2; --control:#7E6A56; --fg:#292018; --muted:#645340;
+ --accent:#94501C; --focus:#82420D; --on-accent:#FFFFFF; --accent-dim:#EED8BF;
+ --ok:#495926; --ok-dim:#E3EAD5; --warn:#785014; --warn-dim:#F4E7C8;
+ --err:#A03926; --err-dim:#F5DDD5; --info:#385E75; --purple:#775180;
+}
+html {scrollbar-color:var(--control) var(--panel);scrollbar-width:thin}
+html,body {font:14px/1.5 var(--sans);background:var(--bg);color:var(--fg)}
+body {margin:0}
+button,input,select,textarea {font-family:inherit;font-size:14px;min-height:36px;max-width:100%;border-color:var(--control);color:var(--fg);background:var(--panel-2);border-radius:6px}
+button {transition:background 120ms,border-color 120ms;line-height:1.4}
+button:hover:not(:disabled),button.act:hover:not(:disabled) {background:var(--panel-3);border-color:var(--accent)}
+button:active:not(:disabled) {transform:none}
+button.primary,button.act.primary {background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+button.primary:hover:not(:disabled),button.act.primary:hover:not(:disabled) {background:var(--focus);border-color:var(--focus);color:var(--on-accent);filter:none}
+button.success {background:var(--ok);color:var(--bg)}
+button.danger,button.act.danger {background:var(--err-dim);border-color:var(--err);color:var(--err)}
+button:disabled {cursor:not-allowed}
+button.sm,.presets button {font-size:12px;min-height:32px}
+input[type=checkbox],input[type=radio] {min-height:16px;width:16px;height:16px;accent-color:var(--accent);flex:none}
+input::placeholder,textarea::placeholder {color:var(--muted);opacity:1}
+input:focus,select:focus,textarea:focus {outline:none;border-color:var(--focus)}
+:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible {outline:2px solid var(--focus);outline-offset:3px;box-shadow:0 0 0 2px var(--bg)}
+a {color:var(--accent);text-underline-offset:3px}
+::selection {background:var(--accent-dim);color:var(--fg)}
+header {min-height:72px;height:auto;padding:12px 24px;gap:16px;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--line)}
+.ib-brand {display:flex;align-items:center;gap:12px;min-width:180px}
+.ib-icon {width:42px;height:42px;flex:none}
+.ib-brand h1,header .brand h1 {color:var(--fg);font-size:18px;font-weight:600;margin:0;line-height:1.35;letter-spacing:0}
+.ib-kicker {font-size:12px;letter-spacing:.08em;color:var(--muted)}
+.ib-header-end {margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.ib-appearance {display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin:0}
+.ib-appearance select {width:auto;font-size:12px;min-height:32px;padding:4px 8px}
+.ib-workspace {display:grid;grid-template-columns:216px minmax(0,1fr);min-height:calc(100vh - 73px)}
+.ib-rail {padding:24px 16px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:8px;align-self:stretch;min-width:0}
+.ib-rail .ib-kicker {margin:0 8px 12px}
+.ib-rail button,.ib-rail a {display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border:1px solid transparent;border-radius:6px;background:transparent;font-size:14px;color:var(--muted);text-decoration:none;white-space:normal;min-height:42px}
+.ib-rail button:hover,.ib-rail a:hover {color:var(--fg);background:var(--panel-2)}
+.ib-rail .active,.ib-rail [aria-current=page] {color:var(--fg);background:var(--accent-dim);border-color:var(--accent);box-shadow:inset 2px 0 var(--accent)}
+.ib-rail .ib-rail-footer {margin-top:auto;padding-top:32px;border-top:1px solid var(--line)}
+.ib-rail small {font-size:12px;line-height:1.6;color:var(--muted);display:block;padding:8px}
+.ib-nav-symbol {width:20px;text-align:center;color:var(--accent);font-size:18px;flex:none}
+main {width:100%;min-width:0;max-width:1600px;padding:24px;margin:0 auto}
+.ib-hero {position:relative;isolation:isolate;min-height:154px;padding:24px 28px;margin-bottom:24px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#161310;color:#E6D8C8}
+.ib-hero::before {content:'';position:absolute;inset:0;z-index:-1;background-image:linear-gradient(90deg,rgba(14,12,11,.94),rgba(14,12,11,.6) 60%,rgba(14,12,11,.18)),var(--ib-art);background-size:cover;background-position:center 62%}
+.ib-hero h2 {font-size:26px;font-weight:600;margin:6px 0;line-height:1.25}
+.ib-hero p {font-size:14px;margin:8px 0 0;max-width:650px;color:#CBB8A4}
+.ib-hero .ib-kicker {color:#FFC56A}
+.card,.summary-card,.spot-card,.pick-card,.model-card,.table-wrap {background:var(--panel);border-color:var(--line);border-radius:8px}
+.card,.summary-card,.spot-card {padding:20px}
+.card h2,.card-title,.spot-label {text-transform:none;letter-spacing:0;color:var(--fg);font-size:14px;line-height:1.5;font-weight:600}
+.card h2 {margin-bottom:16px}
+.card,.grid,.row,.summary-left,.table-wrap {min-width:0}
+.grid {gap:20px}
+.g2 {grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3 {grid-template-columns:repeat(3,minmax(0,1fr))}
+.stat-row {gap:12px}
+.stat-box,.kpi {background:var(--panel-2);border-color:var(--line);padding:14px 18px;text-align:left}
+.stat-box .num,.kpi .k-val {font-family:var(--sans);font-size:26px;line-height:1.3;font-variant-numeric:tabular-nums;font-weight:600}
+.stat-box .lbl,.kpi .k-label,.kpi .k-sub {font-size:12px;color:var(--muted);text-transform:none;letter-spacing:0}
+.summary-left h2 {font-size:16px;flex-wrap:wrap}
+.summary-bullets {font-size:13px;line-height:1.7;color:var(--muted)}
+.pill,.badge,.tag,.tag-chip,.usage-chip,.bench-chip {font-size:12px;text-transform:none;letter-spacing:0;border-radius:4px;max-width:100%;overflow-wrap:anywhere}
+.pill {background:var(--panel-2);border-color:var(--line)}
+.pill.ok,.badge.ok,.bench-chip {color:var(--ok);border-color:var(--ok);background:var(--ok-dim)}
+.pill.warn,.badge.warn {color:var(--warn);border-color:var(--warn);background:var(--warn-dim)}
+.pill.err,.badge.err {color:var(--err);border-color:var(--err);background:var(--err-dim)}
+.pill.accent,.badge.info,.usage-chip {color:var(--info);border-color:var(--info);background:var(--panel-2)}
+.filter-tabs button.active,.prov-chip.active,.tab-btn.active,.presets button.active {color:var(--fg);background:var(--accent-dim);border-color:var(--accent);box-shadow:inset 0 -2px var(--accent)}
+.filter-tabs button {min-height:36px;font-size:13px}
+.toolbar {gap:12px;padding:12px 0}
+.search-input {max-width:100%;min-height:38px;background:var(--panel-2);border-color:var(--control)}
+table {font-size:13px;line-height:1.5}
+th {font-size:12px;text-transform:none;letter-spacing:0;color:var(--muted);background:var(--panel-2);padding:12px;border-color:var(--line)}
+td {padding:12px;border-color:var(--line)}
+tr:hover td {background:var(--panel-2)}
+.table-wrap {overflow:auto}
+.mono,pre,code {font-family:var(--mono);overflow-wrap:anywhere}
+pre.log,pre.preview-box {background:var(--bg);color:var(--muted);font-size:12px}
+label {font-size:13px;color:var(--muted)}
+.modal-backdrop {padding:20px;background:rgba(0,0,0,.72)}
+.modal {background:var(--panel);color:var(--fg);border-color:var(--line);max-width:min(960px,100%);max-height:calc(100dvh - 40px);overflow:auto;padding:24px;border-radius:10px}
+.modal h3 {font-size:20px;font-weight:600;margin-top:0}
+.modal input,.modal select,.modal textarea {background:var(--panel-2);border-color:var(--control);color:var(--fg)}
+.modal-body-scroll {min-width:0}
+#toast,.toast {background:var(--panel-2);color:var(--fg);border-color:var(--control);max-width:calc(100vw - 36px);font-size:14px}
+.ib-skip {position:fixed;left:16px;top:-100px;z-index:1000;background:var(--accent);color:var(--on-accent);padding:10px 16px}
+.ib-skip:focus {top:12px}
+.ib-error {color:var(--err);padding:16px;border:1px solid var(--err);background:var(--err-dim);border-radius:6px}
+@media(max-width:1050px) {
+ .ib-workspace {grid-template-columns:184px minmax(0,1fr)}
+ .ib-rail {padding:20px 10px}
+ .g2,.g3 {grid-template-columns:1fr}
+ main {padding:20px}
+}
+@media(max-width:760px) {
+ header {padding:12px 16px;gap:12px}
+ .ib-header-end {margin-left:0;width:100%}
+ .ib-workspace {display:block}
+ .ib-rail {padding:12px;border-right:0;border-bottom:1px solid var(--line);flex-direction:row;flex-wrap:wrap;gap:6px}
+ .ib-rail>.ib-kicker,.ib-rail .ib-rail-footer {display:none}
+ .ib-rail button,.ib-rail a {width:auto;min-height:40px;padding:8px 10px;font-size:13px}
+ main {padding:16px}
+ .ib-hero {min-height:148px;padding:20px;margin-bottom:16px}
+ .ib-hero h2 {font-size:24px}
+ .card,.summary-card,.spot-card {padding:16px}
+ .stat-row {width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .stat-box {min-width:0}
+ .spotlight-grid,.pick-grid {grid-template-columns:minmax(0,1fr)}
+ .form-row[style*="grid"] {grid-template-columns:1fr!important}
+ .modal {padding:16px}
+ .modal-backdrop {padding:12px}
+ .row>* {min-width:0!important;max-width:100%}
+ .search-input {min-width:0!important;width:100%}
+}
+@media(prefers-reduced-motion:reduce) {*,*::before,*::after {animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media(forced-colors:active) {
+ :root {--bg:Canvas;--panel:Canvas;--panel-2:Canvas;--panel-3:Canvas;--fg:CanvasText;--muted:CanvasText;--line:CanvasText;--control:ButtonText;--accent:LinkText;--focus:Highlight;--on-accent:Canvas;--accent-dim:Canvas;--ok:CanvasText;--warn:CanvasText;--err:CanvasText;--info:CanvasText}
+ .ib-hero {background:Canvas;color:CanvasText}.ib-hero::before{display:none}.ib-hero p,.ib-hero .ib-kicker {color:CanvasText}
+ .active,[aria-current=page] {outline:2px solid Highlight}
+}
+
+:root {--ib-art:url("assets/hero-ironbark.svg")}
+
+
+/* Starter examples; remove or extend for your own application. */
+section[id] {scroll-margin-top:24px;margin-bottom:24px}
+section>h2 {font-size:20px;font-weight:600;margin:0 0 16px}
+h3 {font-size:16px;font-weight:600;margin:0 0 8px}
+p {margin:8px 0 16px}
+.muted,.field-help {color:var(--muted)}
+.field-help {font-size:12px;margin:6px 0 0}
+.form-field {margin-bottom:16px}
+.form-field input,.form-field select,.form-field textarea {width:100%}
+.table-wrap {border:1px solid var(--line)}
+table {min-width:560px}
+.empty-state {text-align:center;padding:36px 20px;border:1px dashed var(--control);border-radius:8px}
+.swatches {display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.swatch {padding:16px;border:1px solid var(--control);border-radius:8px}
+.swatch code {font-size:12px}
+.swatch::before {content:'';display:block;height:36px;background:var(--swatch);border:1px solid var(--control);border-radius:4px;margin-bottom:12px}
+.icon-examples img {width:64px;height:64px}
+.icon-examples figure {margin:0;text-align:center}
+.icon-examples figcaption {font-size:12px;color:var(--muted)}
+dialog {width:min(480px,calc(100vw - 32px));padding:24px;border:1px solid var(--control);border-radius:10px;background:var(--panel);color:var(--fg);box-shadow:0 8px 24px #0006}
+dialog::backdrop {background:#000b}
+dialog h2 {margin-top:0}
+.ib-rail .ib-rail-footer {margin-top:32px}
+@media(min-width:761px){.ib-rail-inner{position:sticky;top:24px}}

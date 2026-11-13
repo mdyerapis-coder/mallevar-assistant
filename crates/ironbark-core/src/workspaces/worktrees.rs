@@ -190,7 +190,6 @@ impl WorkspaceService {
         let (root, _policy) = self
             .store
             .with_connection({
-                let project = project;
                 move |conn| Self::project_row(conn, project)
             })
             .await?;
@@ -272,7 +271,6 @@ impl WorkspaceService {
         let (root, _policy) = self
             .store
             .with_connection({
-                let project = project;
                 move |conn| Self::project_row(conn, project)
             })
             .await?;
@@ -401,7 +399,6 @@ impl WorkspaceService {
             let root: String = self
                 .store
                 .with_connection({
-                    let project = project;
                     move |conn| Ok(conn.query_row("SELECT root FROM projects WHERE id=?1", [project.to_string()], |r| r.get::<_, String>(0))?)
                 })
                 .await?;
@@ -431,7 +428,7 @@ impl WorkspaceService {
     async fn finish_outcome(
         &self,
         consumption: crate::policy::service::ConsumptionReceipt,
-        action: &ActionSpec,
+        _action: &ActionSpec,
         state: &Digest,
         outcome: ActionOutcome,
         now: i64,
@@ -537,6 +534,7 @@ impl WorkspaceService {
     ///   4. the original checkout's HEAD is still at the lease's base commit
     ///      (no unrelated checkout/reset/merge is replayed);
     ///   5. the owner's grant is consumed BEFORE the disk apply.
+    ///
     /// Then applies ONLY the approved diff into the original checkout as one
     /// reviewable commit and records the durable receipt. Any failure leaves
     /// the original checkout at its previous HEAD.
@@ -670,9 +668,9 @@ impl WorkspaceService {
             // `Command::output()` with a piped stdin hands the child an empty
             // patch (the write end is dropped), so the check would reject every
             // diff as "No valid patches in input".
-            let check = git_apply(&root2, &diff_text, &["--check"])
+            git_apply(&root2, &diff_text, &["--check"])
                 .map_err(|error| format!("approved diff does not apply cleanly to the current checkout: {error}"))?;
-            let () = check;
+            let () = ();
             git_apply(&root2, &diff_text, &[])
                 .map_err(|error| format!("approved diff failed to apply to the current checkout: {error}"))?;
             let commit = std::process::Command::new("git")

@@ -16,14 +16,14 @@
 //!   (idempotent). `execute` refuses any released / stale scope.
 //! * Before authorising a single operation the broker checks, in order:
 //!   (1) an active, unexpired scope exists for the target kind + destination and
-//!       the caller's role is permitted (host-session is owner-only);
+//!   the caller's role is permitted (host-session is owner-only);
 //!   (2) the target's live revision digest is FRESH — it is re-observed and
-//!       compared to `action.expected_state_digest`; a stale snapshot cannot
-//!       receive a click;
+//!   compared to `action.expected_state_digest`; a stale snapshot cannot
+//!   receive a click;
 //!   (3) the exact grant matches the action digest + policy version and is
-//!       unexpired / unrevoked (delegated to `ApprovalService::consume`);
+//!   unexpired / unrevoked (delegated to `ApprovalService::consume`);
 //!   (4) for disclosures (screenshot, clipboard, cookie, upload), an owner-issued
-//!       consent record is required — page-world cannot approve an upload.
+//!   consent record is required — page-world cannot approve an upload.
 //!   then the global-input capability gate, then the authorised operation runs
 //!   (the core document model, or the pinned AlphaCode executor for browser/AT-SPI)
 //!   and the receipt records the ACTUAL observed outcome, not the intended click.

@@ -142,7 +142,7 @@ pub fn rank_lexical(
     let route_local = if route_is_local(route, policy) { 1 } else { 0 };
     let project_str = project.to_string();
     let conn_id = route.connection_id.clone();
-    let limit = (limit.max(1).min(64)) as i64;
+    let limit = (limit.clamp(1, 64)) as i64;
     let stmt_sql = format!(
         "SELECT f.chunk_id, c.revision_id, sr.source_id, sr.digest, c.locator, c.content, f.disclosure, f.project_id, bm25(knowledge_fts)
          FROM {FTS_TABLE} f
@@ -203,9 +203,8 @@ pub fn candidate_vector_ids(
     let route_local = if route_is_local(route, policy) { 1 } else { 0 };
     let project_str = project.to_string();
     let conn_id = route.connection_id.clone();
-    let limit = (limit.max(1).min(512)) as i64;
-    let stmt_sql = format!(
-        "SELECT c.id FROM chunks c
+    let limit = (limit.clamp(1, 512)) as i64;
+    let stmt_sql = "SELECT c.id FROM chunks c
          JOIN knowledge_fts f ON f.chunk_id = c.id
          JOIN source_revisions sr ON sr.id = c.revision_id
          JOIN sources s ON s.id = sr.source_id
@@ -219,8 +218,7 @@ pub fn candidate_vector_ids(
                      SELECT 1 FROM json_each(f.disclosure, '$.connection_ids') WHERE json_each.value = ?5
                  ))
            )
-         LIMIT ?6",
-    );
+         LIMIT ?6".to_string();
     let mut stmt = conn.prepare(&stmt_sql)?;
     let rows = stmt.query_map(params![
         project_str,
@@ -322,7 +320,7 @@ mod tests {
             max_workers: 1, max_requests: 1, max_cost_microusd: None,
             spend_policy: crate::contracts::SpendPolicy::FreeOnly, allow_unknown_cost: false,
         };
-        let project_str = project.to_string();
+        let _project_str = project.to_string();
         store.with_connection(move |conn| {
             ensure_fts(conn)?;
             let project_str = project.to_string();

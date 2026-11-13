@@ -387,10 +387,6 @@ impl RunControl {
         })
     }
 
-    fn recovery(&self) -> &Recovery {
-        &self.recovery
-    }
-
     /// Record the native session reference + partial artifacts into the durable
     /// run body and advance queued/ready -> running. A freshly created run is
     /// `queued`, so admission (queued -> ready) happens here through the same

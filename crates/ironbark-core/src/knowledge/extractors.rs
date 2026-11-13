@@ -50,11 +50,10 @@ fn run_pdftotext(bytes: &[u8]) -> Result<String> {
         .env_clear()
         .env("PATH", "/usr/bin:/bin")
         .spawn();
-    let mut child = match child {
+    let child = match child {
         Ok(c) => c,
         Err(_) => return Err(CoreError::new("extractor_unavailable", "pdftotext (poppler) is not installed")),
     };
-    use std::io::Read;
     let deadline = std::time::Instant::now() + EXTRACTION_TIMEOUT;
     let out = match child.wait_with_output() {
         Ok(o) => o,
@@ -112,7 +111,7 @@ fn is_code_filename(name: &str) -> bool {
         "rs"|"go"|"c"|"h"|"cc"|"cpp"|"hpp"|"py"|"rb"|"ts"|"tsx"|"js"|"jsx"|"mjs"|"sh"|"bash"|"zsh"|"pl"|"lua"|"toml"|"json"|"yaml"|"yml"|"nix"|"zig"|"java"|"kt"|"sql"|"proto"|"hcl"|"tf"|"ex"|"exs"|"clj"|"el"|"vim"|"css"|"scss")
 }
 
-fn mime_for(name: &str, ext: &str) -> &'static str {
+fn mime_for(_name: &str, ext: &str) -> &'static str {
     match ext {
         "pdf" => "application/pdf",
         "md"|"markdown" => "text/markdown",
@@ -125,28 +124,13 @@ fn mime_for(name: &str, ext: &str) -> &'static str {
 
 fn code_ext(name: &str) -> bool { is_code_filename(name) }
 
-fn entity(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for ch in text.chars() {
-        match ch {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&apos;"),
-            _ => out.push(ch),
-        }
-    }
-    out
-}
-
 fn decode_entities(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let bytes = text.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
-        if bytes[i] == b'&' {
-            if let Some(end) = text[i..].find(';') {
+        if bytes[i] == b'&'
+            && let Some(end) = text[i..].find(';') {
                 let ent = &text[i..i + end + 1];
                 out.push(match ent {
                     "&amp;" => '&', "&lt;" => '<', "&gt;" => '>', "&quot;" => '"', "&apos;" => '\'',
@@ -155,7 +139,6 @@ fn decode_entities(text: &str) -> String {
                 i += end + 1;
                 continue;
             }
-        }
         out.push(text[i..].chars().next().unwrap_or(' '));
         i += 1;
     }
@@ -290,7 +273,7 @@ fn extract_html(text: &str) -> Result<Extraction> {
     let mut in_heading = false;
     let mut heading: String = String::new();
 
-    let mut flush_para = |units: &mut Vec<ExtractedUnit>, section: &str, para: &mut String| {
+    let flush_para = |units: &mut Vec<ExtractedUnit>, section: &str, para: &mut String| {
         if !para.is_empty() {
             let body = para.trim();
             if !body.is_empty() {
@@ -323,13 +306,11 @@ fn extract_html(text: &str) -> Result<Extraction> {
                 in_heading = false;
                 let heading_text = decode_entities(heading.trim());
                 section = if heading_text.is_empty() { "__section__".into() } else { heading_text.chars().take(80).collect() };
-            } else if t == "<br>" || t == "<br/>" || t == "<br />"
-                || t.starts_with("</p>") || t.starts_with("</div>") || t.starts_with("</li>") || t.starts_with("</tr>")
-            {
-                if !in_heading {
+            } else if (t == "<br>" || t == "<br/>" || t == "<br />"
+                || t.starts_with("</p>") || t.starts_with("</div>") || t.starts_with("</li>") || t.starts_with("</tr>"))
+                && !in_heading {
                     flush_para(&mut units, &section, &mut para);
                 }
-            }
         } else {
             if in_heading { heading.push(chars[idx]); }
             else { para.push(chars[idx]); }

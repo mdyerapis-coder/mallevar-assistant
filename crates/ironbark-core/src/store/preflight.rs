@@ -113,7 +113,7 @@ fn capacity(directory: &File) -> Option<u64> {
     let mut stat = std::mem::MaybeUninit::<libc::statvfs>::uninit();
     if unsafe { libc::fstatvfs(directory.as_raw_fd(), stat.as_mut_ptr()) } != 0 { return None; }
     let stat = unsafe { stat.assume_init() };
-    (stat.f_bavail as u64).checked_mul(stat.f_frsize as u64)
+    stat.f_bavail.checked_mul(stat.f_frsize)
 }
 fn require_capacity(directory: &File, bytes: u64) -> Result<u64> {
     let free = capacity(directory).ok_or_else(|| denied("CapacityUnavailable"))?;
@@ -138,9 +138,6 @@ fn nearest_existing(path: &Path) -> Result<File> {
 }
 struct Pinned { evidence: RecoveryFile, file: File }
 impl Pinned {
-    fn open(directory: &File, name: &str) -> Result<Option<Self>> {
-        Self::open_limited(directory, name, u64::MAX)
-    }
     fn open_limited(directory: &File, name: &str, limit: u64) -> Result<Option<Self>> {
         let Some(mut file) = open_at(directory, OsStr::new(name), false)? else { return Ok(None); };
         let identity = FileIdentity::read(&file)?;
@@ -311,7 +308,7 @@ fn validate_wal(raw: &Path) -> Result<()> {
     let page_bytes = word(&header[8..12]) as usize;
     if !(512..=65536).contains(&page_bytes) || !page_bytes.is_power_of_two() || (length - 32) % (24 + page_bytes as u64) != 0 { return Err(denied("CorruptRecoveryWal")); }
     fn checksum(bytes: &[u8], big_endian: bool, state: &mut (u32, u32)) {
-        for pair in bytes.chunks_exact(8) {
+        for pair in bytes.as_chunks::<8>().0 {
             let decode = |v: &[u8]| {
                 let value = [v[0], v[1], v[2], v[3]];
                 if big_endian { u32::from_be_bytes(value) } else { u32::from_le_bytes(value) }
@@ -403,11 +400,10 @@ fn drop_owned_staging(parent: &File, directory: &File, stage_name: &str) -> Resu
         if fd >= 0 {
             let probe = unsafe { File::from_raw_fd(fd) };
             let (held, named) = (directory.metadata(), probe.metadata());
-            if let (Ok(held), Ok(named)) = (held, named) {
-                if held.dev() == named.dev() && held.ino() == named.ino() {
+            if let (Ok(held), Ok(named)) = (held, named)
+                && held.dev() == named.dev() && held.ino() == named.ino() {
                     let _ = unsafe { libc::unlinkat(parent.as_raw_fd(), cstr.as_ptr(), libc::AT_REMOVEDIR) };
                 }
-            }
         }
     }
     Ok(())
@@ -969,12 +965,11 @@ mod race_tests {
                 Observation::Capacity { required, available } if required >= OVERHEAD + total => {
                     if available >= required { saw_admission.set(true); }
                 }
-                Observation::BeforeRead { name: Some(name), .. } if digests.iter().any(|digest| digest == name) => {
-                    if !saw_admission.get() {
+                Observation::BeforeRead { name: Some(name), .. } if digests.iter().any(|digest| digest == name)
+                    && !saw_admission.get() => {
                         saw_read.set(true);
                         return Err(denied("TestCasReadBeforeCompleteAdmission"));
                     }
-                }
                 _ => {}
             }
             Ok(())

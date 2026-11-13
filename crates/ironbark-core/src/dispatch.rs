@@ -209,7 +209,7 @@ impl CoreServices {
             }
             C::RunReconcile { project_id, run_id, decision } => {
                 let service = Recovery::new(self.store.clone(), *project_id, self.cas_root())?;
-                service.reconcile(*run_id, decision.clone()).await?;
+                service.reconcile(*run_id, *decision).await?;
                 ok(CommandResult::RunReconcile { value: Empty {} })
             }
             C::RunCancel { project_id, run_id } => {
@@ -220,7 +220,7 @@ impl CoreServices {
                 let service = RunControl::new(self.store.clone(), *project_id, self.cas_root())?;
                 ok(CommandResult::RunObserveStop { value: service.observe_stop(*run_id).await? })
             }
-            C::RunNativeDone { project_id, run_id, receipt } => {
+            C::RunNativeDone { project_id, run_id, receipt: _ } => {
                 let service = RunControl::new(self.store.clone(), *project_id, self.cas_root())?;
                 ok(CommandResult::RunNativeDone { value: service.observe_native_done(*run_id).await? })
             }
@@ -231,7 +231,7 @@ impl CoreServices {
             }
             C::KnowledgeRetrieve { project_id, query, limit } => {
                 let service = KnowledgeService::new(self.store.clone(), self.cas_root());
-                ok(CommandResult::KnowledgeRetrieve { value: service.retrieve(*project_id, &query, *limit as usize).await? })
+                ok(CommandResult::KnowledgeRetrieve { value: service.retrieve(*project_id, query, *limit as usize).await? })
             }
             C::KnowledgeOpenCitation { project_id, citation } => {
                 let service = CitationResolver::new(self.store.clone());
@@ -243,7 +243,7 @@ impl CoreServices {
             }
             C::KnowledgeBuildContext { project_id, query, limit } => {
                 let service = KnowledgeService::new(self.store.clone(), self.cas_root());
-                ok(CommandResult::KnowledgeBuildContext { value: service.build_context(*project_id, &query, *limit as usize).await? })
+                ok(CommandResult::KnowledgeBuildContext { value: service.build_context(*project_id, query, *limit as usize).await? })
             }
             C::MemoryPropose { project_id, text, source } => {
                 let service = MemoryService::new(self.store.clone());
@@ -252,7 +252,7 @@ impl CoreServices {
             }
             C::MemoryDecide { project_id: _, candidate_id, decision, edited_text } => {
                 let service = MemoryService::new(self.store.clone());
-                ok(CommandResult::MemoryDecide { value: service.decide(candidate_id, edited_text.clone(), decision.clone()).await? })
+                ok(CommandResult::MemoryDecide { value: service.decide(candidate_id, edited_text.clone(), *decision).await? })
             }
             C::MemoryForget { project_id: _, record_id } => {
                 let service = MemoryService::new(self.store.clone());
@@ -263,21 +263,21 @@ impl CoreServices {
                 ok(CommandResult::KnowledgeSearchMemory { value: service.retrieve_memories(*project_id, query, *limit as usize).await? })
             }
             C::KnowledgeEmbedIndex { project_id: _, model } => {
-                let service = EmbeddingIndex::new(self.store.clone());
+                let _service = EmbeddingIndex::new(self.store.clone());
                 ok(CommandResult::KnowledgeEmbedIndex { value: model.clone() })
             }
-            C::KnowledgeEmbedQuery { project_id: _, model, query } => {
-                let service = EmbeddingIndex::new(self.store.clone());
+            C::KnowledgeEmbedQuery { project_id: _, model: _, query } => {
+                let _service = EmbeddingIndex::new(self.store.clone());
                 ok(CommandResult::KnowledgeEmbedQuery { value: query.clone() })
             }
             // === W1-W3: WebGPT commands ===
             C::WebGptProbe { connection } => {
                 let service = WebGptService::new(self.store.clone(), self.paths.data_dir.clone());
-                ok(CommandResult::WebGptProbe { value: service.probe(&connection).await? })
+                ok(CommandResult::WebGptProbe { value: service.probe(connection).await? })
             }
             C::WebGptActivate { connection_id } => {
                 let service = WebGptService::new(self.store.clone(), self.paths.data_dir.clone());
-                ok(CommandResult::WebGptActivate { value: service.activate(&connection_id).await? })
+                ok(CommandResult::WebGptActivate { value: service.activate(connection_id).await? })
             }
             C::WebGptSubmit { run_id, content, idempotency_key } => {
                 let service = WebGptService::new(self.store.clone(), self.paths.data_dir.clone());
@@ -292,20 +292,20 @@ impl CoreServices {
                 ok(CommandResult::WebGptTurn { value: service.turn(*run_id, input.clone()).await? })
             }
             // === J2: Judgment qualification commands ===
-            C::JudgmentQualify { domain, report, calibrator_digest } => {
+            C::JudgmentQualify { domain: _, report, calibrator_digest } => {
                 let service = QualificationStore::new(self.store.clone());
                 ok(CommandResult::JudgmentQualify { value: service.enable(report.clone(), calibrator_digest.clone()).await? })
             }
             C::JudgmentQualificationList { domain } => {
                 let service = QualificationStore::new(self.store.clone());
-                ok(CommandResult::JudgmentQualificationList { value: service.list(domain.clone()).await? })
+                ok(CommandResult::JudgmentQualificationList { value: service.list(*domain).await? })
             }
             // === H8: Automation commands ===
             C::AutomationObserve { target } => {
                 let broker = AutomationBroker::new(self.store.clone());
                 ok(CommandResult::AutomationObserve { value: broker.observe(target.clone()).await? })
             }
-            C::AutomationExecute { action, grant, expected_state_digest } => {
+            C::AutomationExecute { action, grant, expected_state_digest: _ } => {
                 let broker = AutomationBroker::new(self.store.clone());
                 ok(CommandResult::AutomationExecute { value: broker.execute(action.clone(), grant.clone(), None).await? })
             }
@@ -339,5 +339,5 @@ impl CoreServices {
 
 /// Wrap one typed leaf result in the command-tagged success envelope.
 fn ok(value: CommandResult) -> Result<CoreReply> {
-    Ok(CoreReply::Ok { value })
+    Ok(CoreReply::Ok { value: Box::new(value) })
 }

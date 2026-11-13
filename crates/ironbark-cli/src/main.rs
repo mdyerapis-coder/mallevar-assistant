@@ -443,7 +443,7 @@ fn emit(_paths: &RuntimePaths, reply: CoreReply, command: &CoreCommand) -> Resul
     if let CommandResult::ArtifactRead { value: read } = &result {
         let bytes = STANDARD.decode(&read.data).map_err(|e| format!("artifact base64: {e}"))?;
         if bytes.len() as u64 != read.bytes {
-            return Err(format!("artifact byte count differs from its manifest"));
+            return Err("artifact byte count differs from its manifest".to_string());
         }
         let mut out = std::io::stdout().lock();
         out.write_all(&bytes).map_err(|e| format!("write artifact bytes: {e}"))?;
@@ -459,7 +459,7 @@ fn emit(_paths: &RuntimePaths, reply: CoreReply, command: &CoreCommand) -> Resul
 /// Unwrap the typed `CommandResult` from a reply, surfacing the typed error.
 fn outcome(reply: CoreReply) -> Result<CommandResult, CoreError> {
     match reply {
-        CoreReply::Ok { value } => Ok(value),
+        CoreReply::Ok { value } => Ok(*value),
         CoreReply::Error { code, message, .. } => Err(CoreError::new(&code, message)),
     }
 }

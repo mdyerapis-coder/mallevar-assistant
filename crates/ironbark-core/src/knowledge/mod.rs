@@ -36,7 +36,6 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 use ts_rs::TS;
-use uuid::Uuid;
 use crate::{contracts::*, error::{CoreError, Result}, store::Store};
 
 /// One ranked, disclosure-checked excerpt. The `CitedExcerpt` already carries
@@ -85,10 +84,6 @@ impl MemoryService {
 }
 impl EmbeddingIndex {
     pub fn new(store: Store) -> Self { Self { store } }
-}
-
-pub(crate) fn parse_uuid(value: &str) -> Result<Uuid> {
-    Uuid::parse_str(value).map_err(|_| CoreError::new("storage_corrupt", "Invalid persisted UUID"))
 }
 
 pub(crate) fn now_ms() -> i64 {

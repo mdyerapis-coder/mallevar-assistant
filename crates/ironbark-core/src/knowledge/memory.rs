@@ -146,7 +146,7 @@ impl MemoryService {
     /// excerpts only — these are context, never instructions to dispatch.
     pub async fn retrieve_memories(&self, project: ProjectId, query: &str, limit: usize) -> Result<Vec<MemoryRecord>> {
         let project_str = project.to_string();
-        let limit = limit.max(1).min(64);
+        let limit = limit.clamp(1, 64);
         let terms = fts_terms(query);
         let store = self.store.clone();
         store.with_connection(move |conn| {

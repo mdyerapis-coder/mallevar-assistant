@@ -105,10 +105,10 @@ try {
   assert.equal(sha256(await readFile(join(backup, "core.sqlite3"))), manifest.database_digest);
   assert(manifest.objects.some((o) => o.digest === sha256(sourceBytes)));
   assert(manifest.objects.some((o) => o.digest === sha256(checkpointBytes)));
-  for (const object of manifest.objects) { const bytes = await readFile(join(backup, "objects", object.digest)); assert.equal(bytes.length, object.bytes); assert.equal(sha256(bytes), object.digest); }
+  for (const object of manifest.objects) { const bytes = await readFile(join(backup, "objects", object.digest)); assert.match(object.bytes, /^(0|[1-9][0-9]*)$/); assert.equal(BigInt(object.bytes), BigInt(bytes.length)); assert.equal(sha256(bytes), object.digest); }
   for (const path of await allFiles(backup)) assert(!(await readFile(path)).includes(Buffer.from(secret)), "unique secret sentinel leaked into export");
   // Core remains live throughout online backup.
-  const liveStatus = await json<{ projects: number }>(originalEnv, ["status"]); assert.equal(liveStatus.projects, 1);
+  const liveStatus = await json<{ projects: string }>(originalEnv, ["status"]); assert.equal(BigInt(liveStatus.projects), 1n);
   const report = await json<RestoreReport>(restoredEnv, ["backup", "restore", "--source", backup, "--new-namespace"]);
   assert.equal(report.stopped, true); assert(BigInt(report.blocked_runs) >= 1n);
   assert(!(await exists(runtime(restoredEnv)))); assert(!(await exists(join(restoredEnv.XDG_STATE_HOME, "ironbark-assistant"))));
@@ -116,9 +116,9 @@ try {
   assert.deepEqual(await command(restoredEnv, ["artifact", "read", "--project", project.id, "--id", imported.artifact_id]), sourceBytes);
   assert.deepEqual(await command(restoredEnv, ["artifact", "read", "--project", project.id, "--id", checkpointArtifact]), checkpointBytes);
   const restoredRun = await json<RecoveryReport>(restoredEnv, ["run", "inspect", "--project", project.id, "--run", run.run_id]); assert.equal(restoredRun.run_state, "blocked");
-  const processStatus = await json<{ protocol: number; projects: number }>(restoredEnv, ["status"]);
+  const processStatus = await json<{ protocol: number; projects: string }>(restoredEnv, ["status"]);
   assert.equal(processStatus.protocol, 1, "restored core is not the canonical protocol");
-  assert.equal(processStatus.projects, 1, "restored namespace lost its restored project");
+  assert.equal(BigInt(processStatus.projects), 1n, "restored namespace lost its restored project");
   await assertNoChildren(restoredDaemon.pid);
   assert.equal((await readFile(join(native, "credentials"), "utf8")), secret);
   const doctor = await json<{ sqlite_integrity: string; foreign_keys: boolean }>(restoredEnv, ["doctor", "--json"]); assert.equal(doctor.sqlite_integrity, "ok"); assert.equal(doctor.foreign_keys, true);
@@ -141,7 +141,7 @@ try {
   try { unreviewed.exec("CREATE TABLE future_object_references(id TEXT PRIMARY KEY, body TEXT NOT NULL)"); }
   finally { unreviewed.close(); }
   const unknownBytes = await readFile(unknownDatabase);
-  const unknownManifest = { ...manifest, database_digest: sha256(unknownBytes), database_bytes: unknownBytes.length };
+  const unknownManifest = { ...manifest, database_digest: sha256(unknownBytes), database_bytes: String(unknownBytes.length) };
   await writeFile(join(unknownBackup, "manifest.json"), JSON.stringify(unknownManifest));
   const unknownEnv = environment("rejected-schema");
   await command(unknownEnv, ["backup", "restore", "--source", unknownBackup, "--new-namespace"], 3);

@@ -11,6 +11,20 @@
 //! index/retrieve path rejects the vector (`embedding_incompatible`).
 
 use rusqlite::{params, OptionalExtension};
+
+/// One fetched embedding row: (chunk id, revision id, locator, content,
+/// disclosure JSON, source id, digest, vector blob, dimensions).
+type FetchedEmbeddingRow = (
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    Vec<u8>,
+    i64,
+);
 use super::{RetrievalExcerpt, RetrievalResult};
 use crate::contracts::{Citation, CitedExcerpt, EmbeddingIndexReceipt, EmbeddingModelIdentity, ProjectId, RoutePin, SourceRevision, Digest};
 use crate::error::{CoreError, Result};
@@ -21,7 +35,6 @@ use super::chunks::{self, ensure_fts, rank_lexical, candidate_vector_ids};
 fn embed_fn(text: &str, dims: u32) -> Vec<f32> {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    const FNV_OFFSET_BASIS: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
     let mut hasher = DefaultHasher::new();
     text.len().hash(&mut hasher);
@@ -55,7 +68,7 @@ fn to_blob(vector: &[f32]) -> Vec<u8> {
 
 fn decode_f32(blob: &[u8]) -> Vec<f32> {
     let mut out = Vec::with_capacity(blob.len() / 4);
-    for chunk in blob.chunks_exact(4) {
+    for chunk in blob.as_chunks::<4>().0 {
         let mut b = [0u8; 4]; b.copy_from_slice(chunk);
         out.push(f32::from_le_bytes(b));
     }
@@ -138,11 +151,10 @@ impl super::EmbeddingIndex {
                     params![chunk_id, model_key],
                     |row| row.get(0),
                 ).optional()?;
-                if let Some(d) = existing {
-                    if d != dimensions as i64 {
+                if let Some(d) = existing
+                    && d != dimensions as i64 {
                         return Err(CoreError::new("embedding_incompatible", "existing vector dimensions disagree with the model identity"));
                     }
-                }
                 let blob = to_blob(vector);
                 upsert.execute(params![chunk_id, model_key, dimensions as i64, blob])?;
                 written += 1;
@@ -169,7 +181,7 @@ impl super::EmbeddingIndex {
         let model_key = model_key(model);
         let qvec = embed_fn(query, model.dimensions);
         let query = query.to_string();
-        let limit = limit.max(1).min(64);
+        let limit = limit.clamp(1, 64);
         let policy_for_fallback = policy.clone();
         let route_for_fallback = route.clone();
 
@@ -195,7 +207,7 @@ impl super::EmbeddingIndex {
         let rows = self.store.with_connection(move |conn| {
             ensure_fts(conn)?;
             let mut stmt = conn.prepare_cached(&fetch_sql)?;
-            let rows: Vec<(String, String, String, String, String, String, String, Vec<u8>, i64)> = stmt
+            let rows: Vec<FetchedEmbeddingRow> = stmt
                 .query_map(rusqlite::params_from_iter(params_vec.iter().map(|p| p.as_ref())), |row| {
                     let blob: Vec<u8> = row.get(7)?;
                     Ok((
@@ -234,7 +246,7 @@ impl super::EmbeddingIndex {
 
         let mut excerpts = Vec::new();
         for idx in order.into_iter().take(limit) {
-            let (chunk_id, _rev, locator_key, content, disclosure_json, source_id, digest, _vec, _dcol) = &rows[idx];
+            let (_chunk_id, _rev, locator_key, content, disclosure_json, source_id, digest, _vec, _dcol) = &rows[idx];
             let citation = Citation {
                 source_id: source_id.clone(),
                 revision_digest: Digest::parse(digest)?,

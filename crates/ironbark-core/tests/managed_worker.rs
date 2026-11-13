@@ -65,7 +65,7 @@ impl Fixture {
     fn spec(&self) -> LaunchSpec {
         let executable = std::env::current_exe().unwrap();
         let runner = PathBuf::from(env!("CARGO_BIN_EXE_ironbark-core"));
-        let runtime = RuntimeManifest::discover_elf(&[executable.clone(), runner], &[PathBuf::from("/usr/lib"), PathBuf::from("/lib64")]).unwrap();
+        let runtime = RuntimeManifest::discover_elf(&[executable.clone(), runner], &[PathBuf::from("/usr/lib"), PathBuf::from("/usr/lib/x86_64-linux-gnu"), PathBuf::from("/lib64")]).unwrap();
         let credential = self._root.path().join("credential");
         fs::write(&credential, b"private-test-credential").unwrap();
         LaunchSpec {
@@ -584,7 +584,7 @@ async fn pinned_bun_bootstrap_ignores_worktree_preload_and_env_before_private_by
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..").canonicalize().unwrap();
     let runner = PathBuf::from(env!("CARGO_BIN_EXE_ironbark-core"));
     let mut spec = fixture.spec();
-    spec.runtime = RuntimeManifest::discover_elf(&[runner, bun.clone(), PathBuf::from("/bin/sh")], &[PathBuf::from("/usr/lib"), PathBuf::from("/lib64")]).unwrap();
+    spec.runtime = RuntimeManifest::discover_elf(&[runner, bun.clone(), PathBuf::from("/bin/sh")], &[PathBuf::from("/usr/lib"), PathBuf::from("/usr/lib/x86_64-linux-gnu"), PathBuf::from("/lib64")]).unwrap();
     spec.runtime.add_file(bun, PathBuf::from("/opt/ironbark/bun")).unwrap();
     // Enumerated immutable files, never a directory bind of the checkout/node_modules.
     for relative in [

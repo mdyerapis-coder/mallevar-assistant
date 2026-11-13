@@ -25,7 +25,7 @@ impl Fixture {
     fn spec(&self, mode: &str) -> LaunchSpec {
         let runner = PathBuf::from(env!("CARGO_BIN_EXE_ironbark-core"));
         let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../qa/fixtures/escape-worker.sh").canonicalize().unwrap();
-        let mut runtime = RuntimeManifest::discover_elf(&[runner, PathBuf::from("/bin/bash"), PathBuf::from("/usr/bin/sleep"), PathBuf::from("/usr/bin/setsid")], &[PathBuf::from("/usr/lib"), PathBuf::from("/lib64")]).unwrap();
+        let mut runtime = RuntimeManifest::discover_elf(&[runner, PathBuf::from("/bin/bash"), PathBuf::from("/usr/bin/sleep"), PathBuf::from("/usr/bin/setsid")], &[PathBuf::from("/usr/lib"), PathBuf::from("/usr/lib/x86_64-linux-gnu"), PathBuf::from("/lib64")]).unwrap();
         runtime.add_file(fixture, PathBuf::from("/fixture.sh")).unwrap();
         LaunchSpec { run_id: RunId::new(), executable: PathBuf::from("/bin/bash"), argv: vec!["/fixture.sh".into(), mode.into(), self.outside.to_string_lossy().into_owned()], cwd: self.workspace.clone(), readonly_mounts: vec![], writable_mounts: vec![self.workspace.clone()], env_allowlist: vec![], network_lease: None, runtime, bootstrap: None }
     }
@@ -135,7 +135,7 @@ fn ptrace_and_process_vm_are_denied() {
     }
     let f=Fixture::new();let s=f.supervisor();fs::write(f.workspace.join("syscall-child-marker"),"probe").unwrap();
     let mut spec=f.spec("escape");let executable=std::env::current_exe().unwrap();
-    let extra=RuntimeManifest::discover_elf(std::slice::from_ref(&executable),&[PathBuf::from("/usr/lib"),PathBuf::from("/lib64")]).unwrap();
+    let extra=RuntimeManifest::discover_elf(std::slice::from_ref(&executable),&[PathBuf::from("/usr/lib"),PathBuf::from("/usr/lib/x86_64-linux-gnu"),PathBuf::from("/lib64")]).unwrap();
     spec.runtime.merge(extra).unwrap();spec.executable=executable;spec.argv=vec!["--exact".into(),"ptrace_and_process_vm_are_denied".into(),"--test-threads=1".into()];
     let receipt=s.wait(s.spawn(spec).unwrap(),Duration::from_secs(10)).unwrap();
     assert!(receipt.all_terminated);assert_eq!(fs::read_to_string(f.workspace.join("syscall-result")).unwrap(),"denied\n");
@@ -188,7 +188,7 @@ fn private_fd3_is_consumed_then_absent_from_tool() {
     let f=Fixture::new();let s=f.supervisor();fs::write(f.workspace.join("fd3-child-marker"),"probe").unwrap();
     let payload=f.outside.join("private-provider-fd");fs::write(&payload,"scoped-test-provider-lease").unwrap();
     let mut spec=f.spec("fds");let executable=std::env::current_exe().unwrap();
-    let extra=RuntimeManifest::discover_elf(std::slice::from_ref(&executable),&[PathBuf::from("/usr/lib"),PathBuf::from("/lib64")]).unwrap();spec.runtime.merge(extra).unwrap();
+    let extra=RuntimeManifest::discover_elf(std::slice::from_ref(&executable),&[PathBuf::from("/usr/lib"),PathBuf::from("/usr/lib/x86_64-linux-gnu"),PathBuf::from("/lib64")]).unwrap();spec.runtime.merge(extra).unwrap();
     spec.executable=executable;spec.argv=vec!["--exact".into(),"private_fd3_is_consumed_then_absent_from_tool".into(),"--test-threads=1".into()];
     spec.bootstrap=Some(ironbark_core::process::NamespaceBootstrap::PrivateFd3(fs::File::open(payload).unwrap().into()));
     let receipt=s.wait(s.spawn(spec).unwrap(),Duration::from_secs(10)).unwrap();

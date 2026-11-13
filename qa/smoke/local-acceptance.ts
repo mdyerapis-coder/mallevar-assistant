@@ -63,9 +63,15 @@ interface Sandbox extends NodeJS.ProcessEnv {
   XDG_RUNTIME_DIR: string;
 }
 function sandbox(root: string): Sandbox {
+  const hostHome = process.env.HOME ?? "";
   return {
     ...process.env,
     HOME: root,
+    // The Rust toolchain lives in the operator's real home; without these
+    // the rustup proxy derives RUSTUP_HOME/CARGO_HOME from the sandbox
+    // HOME and reports the pinned toolchain as not installed.
+    RUSTUP_HOME: process.env.RUSTUP_HOME ?? join(hostHome, ".rustup"),
+    CARGO_HOME: process.env.CARGO_HOME ?? join(hostHome, ".cargo"),
     XDG_DATA_HOME: join(root, "d"),
     XDG_STATE_HOME: join(root, "s"),
     XDG_RUNTIME_DIR: join(root, "r"),
@@ -366,12 +372,12 @@ try {
   const policyPath = join(temp, "policy-v1.json");
   await writeFile(policyPath, JSON.stringify(localPolicy(projectId, "1")));
   const committed = await cliJson<ProjectPolicy>(envA, ["policy", "set", "--project", projectId, "--file", policyPath]);
-  assert.equal(committed.version, 1);
+  assert.equal(committed.version, "1");
   assert.equal(committed.project_id, projectId);
   record("policy set", `ironbark-cli policy set --project ${projectId} --file ${policyPath}`, 0, "the committed ProjectPolicy (version 1)", `version ${committed.version}, local_only ${committed.local_only}, allowed_connections ${committed.allowed_connection_ids.join(",")}`);
 
   const shown = await cliJson<ProjectPolicy>(envA, ["policy", "show", "--project", projectId]);
-  assert.equal(shown.version, 1);
+  assert.equal(shown.version, "1");
   assert.deepEqual(shown, committed);
   record("policy show (round-trip)", `ironbark-cli policy show --project ${projectId}`, 0, "the latest committed policy, equal to the committed one", `version ${shown.version} matches the committed policy`);
 
@@ -386,7 +392,7 @@ try {
   const policyV2Path = join(temp, "policy-v2.json");
   await writeFile(policyV2Path, JSON.stringify(localPolicy(projectId, "2")));
   const committedV2 = await cliJson<ProjectPolicy>(envA, ["policy", "set", "--project", projectId, "--file", policyV2Path]);
-  assert.equal(committedV2.version, 2);
+  assert.equal(committedV2.version, "2");
   record("policy set (version 2)", `ironbark-cli policy set --project ${projectId} --file ${policyV2Path}`, 0, "version 2 commits past the refused stale set", `version ${committedV2.version}`);
 
   // ── knowledge ingest (from the imported artifact) → retrieve → citation ────

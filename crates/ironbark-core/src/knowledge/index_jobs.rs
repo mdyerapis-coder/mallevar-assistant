@@ -13,7 +13,7 @@ pub const MAX_INDEX_WORKERS: usize = 2;
 
 static WORKERS: LazyLock<Arc<Semaphore>> = LazyLock::new(|| Arc::new(Semaphore::new(MAX_INDEX_WORKERS)));
 
-fn workers() -> &'static Arc<Semaphore> { &*WORKERS }
+fn workers() -> &'static Arc<Semaphore> { &WORKERS }
 
 /// A handle to the bounded embedding compute pool. Cheap to clone.
 #[derive(Clone)]

@@ -95,7 +95,6 @@ impl CheckpointStore {
                 "observed_workspace": observed,
                 "created_at": now_ms(),
             }))?;
-            let payload = payload;
             Ok((payload, observed, state_digest))
         })
         .await?;
@@ -168,7 +167,7 @@ impl CheckpointStore {
                     |row| Ok((row.get(0)?, row.get(1)?)),
                 )
                 .optional()
-                .map_err(|e| CoreError::new("storage_error", &e.to_string()))
+                .map_err(|e| CoreError::new("storage_error", e.to_string()))
             })
             .await?;
         let Some((state_digest, body)) = row else {

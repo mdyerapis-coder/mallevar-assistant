@@ -5,15 +5,15 @@
 //! consent rules. Browser (`firefox_bridge`) and desktop (`atspi`) backends
 //! need the pinned AlphaCode executor and a live session, so they stay
 //! unqualified here rather than being faked.
-use std::path::PathBuf;
+use std::path::Path;
 
 use ironbark_core::automation::{
     check_target_in_scope, validate_consent, ApprovedTarget, AutomationBroker, ConsentKind,
-    ConsentRecord, ConsentSource, Effect, ScopePhase, ScopeRole, TargetKind,
+    ConsentRecord, ConsentSource, Effect, ScopeRole, TargetKind,
     HOST_SESSION_TARGET,
 };
 use ironbark_core::contracts::{
-    ActionId, ActionSpec, ApprovalGrant, Digest, DisclosurePolicy, GrantId, JobId, NodeId,
+    ActionId, ActionSpec, ApprovalGrant, Digest, GrantId, JobId, NodeId,
     ProjectId, ProjectPolicy, RunId, SpendPolicy,
 };
 use ironbark_core::policy::service::{ApprovalDecision, ApprovalService, ActionOutcome};
@@ -81,7 +81,7 @@ async fn setup() -> Fixture {
     Fixture { _dir: dir, store: store.clone(), project, run, broker: AutomationBroker::new(store) }
 }
 
-fn document_target(path: &PathBuf, scope_id: &str) -> ApprovedTarget {
+fn document_target(path: &Path, scope_id: &str) -> ApprovedTarget {
     ApprovedTarget {
         scope_id: scope_id.to_string(),
         role: ScopeRole::OwnerOperator,
@@ -95,7 +95,7 @@ fn document_target(path: &PathBuf, scope_id: &str) -> ApprovedTarget {
 /// claims the target looked like, which the broker re-observes.
 fn document_action(
     f: &Fixture,
-    path: &PathBuf,
+    path: &Path,
     digest: Digest,
     operation: &str,
     parameters: serde_json::Value,

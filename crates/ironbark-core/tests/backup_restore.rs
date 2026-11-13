@@ -701,16 +701,14 @@ async fn persisted_action_and_event_value_boundaries_remove_credentials_on_expor
         tool_call_id:None,tool_calls:None,sdk_content:Some(payload("SDK")),sdk_route:None,tool_result_error:None,
     };
     let tool=ToolDescriptor{name:"historical_tool".into(),description:"ordinary schema".into(),input_schema:payload("INPUT_SCHEMA")};
-    let events=vec![
-        CoreEvent::ToolStarted{action:action("START_ARGS","START_SCOPE")},
+    let events=[CoreEvent::ToolStarted{action:action("START_ARGS","START_SCOPE")},
         CoreEvent::ApprovalNeeded{action:action("APPROVAL_ARGS","APPROVAL_SCOPE")},
         CoreEvent::ProviderToolCall{message_id:message,call:ProviderToolCall{id:"call-1".into(),name:"historical_tool".into(),arguments:payload("CALL")}},
         CoreEvent::ProviderMessage{message_id:message,content:payload("CONTENT"),route:RoutePin{connection_id:"local".into(),model_id:"fixture".into(),harness:None}},
         CoreEvent::ProviderMessage{message_id:message,content:serde_json::json!({"messages":[provider],"tools":[tool]}),route:RoutePin{connection_id:"local".into(),model_id:"fixture".into(),harness:None}},
         CoreEvent::ToolFinished{action_id,result:payload("RESULT")},
         CoreEvent::Error{code:"historical_error".into(),message:"ordinary diagnostic".into(),details:payload("DETAILS")},
-        CoreEvent::StateChanged{entity_id:"historical-observation".into(),state:"password=A0_EVENT_STATE_CANARY".into()},
-    ];
+        CoreEvent::StateChanged{entity_id:"historical-observation".into(),state:"password=A0_EVENT_STATE_CANARY".into()}];
     let original_action=serde_json::to_string(&stored_action).unwrap();
     let original_events:Vec<String>=events.iter().map(|event|serde_json::to_string(event).unwrap()).collect();
     let action_copy=original_action.clone();let event_copies=original_events.clone();
@@ -767,14 +765,14 @@ async fn arbitrary_reply_data_cannot_claim_identity_or_raw_score_sanitizer_exemp
         "id": "Bearer A0_ID_CANARY", "state": "password=A0_STATE_CANARY",
         "nested": { "native_id": "Bearer A0_NATIVE_CANARY", "input_digest": "password=A0_DIGEST_CANARY" }
     });
-    let replies = [CoreReply::Ok { value: CommandResult::RunInspect { value: RecoveryReport {
+    let replies = [CoreReply::Ok { value: Box::new(CommandResult::RunInspect { value: RecoveryReport {
         // The legacy Ok envelope allowed arbitrary JSON; the typed envelope
         // bounds it, so the canary payload rides the only bounded-JSON leaf
         // field (observed_workspace) while still exercising the redactor.
         run_id: RunId::new(), run_state: RunState::Failed, recorded_pid: None, recorded_start_time: None,
         checkpoint: None, observed_workspace: payload.clone(), pending_mutation: false,
         uncertain_actions: vec![], recommended: vec![],
-    } } },
+    } }) },
         CoreReply::Error { code: "diagnostic".into(), message: "historical failure".into(), details: payload }];
     for reply in replies {
         let request = uuid::Uuid::new_v4();

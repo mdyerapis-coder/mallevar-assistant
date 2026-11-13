@@ -20,14 +20,14 @@ impl KnowledgeService {
         let policy = policy.clone();
         let route = route.clone();
         let query = query.to_string();
-        let limit = limit.max(1).min(64);
+        let limit = limit.clamp(1, 64);
         let mut constraints: Vec<String> = Vec::new();
         if policy.local_only {
             constraints.push("project is local-only: all content stays on this host".into());
         }
         constraints.push("route is local".into());
         let route_for_digest = route.clone();
-        let policy_for_digest = policy.clone();
+        let _policy_for_digest = policy.clone();
         let query_for_digest = query.clone();
 
         let project_str = project.to_string();

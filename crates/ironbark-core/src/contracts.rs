@@ -568,7 +568,17 @@ pub struct ShutdownReceipt { pub shutting_down: bool }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub enum CoreReply { Ok { value: CommandResult }, Error { code: String, message: String, #[ts(type = "unknown")] details: serde_json::Value } }
+pub enum CoreReply {
+    Ok {
+        value: Box<CommandResult>,
+    },
+    Error {
+        code: String,
+        message: String,
+        #[ts(type = "unknown")]
+        details: serde_json::Value,
+    },
+}
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 // `Request` embeds the full command by design (the frame IS the command envelope). Boxing

@@ -92,9 +92,9 @@ fn same_sql(left: &str, right: &str) -> bool {
     // Whitespace outside literals is formatting; literal bytes are data.
     fn normalized(sql: &str) -> impl Iterator<Item=char> + '_ {
         let mut quote = None;
-        sql.chars().filter_map(move |c| {
-            if matches!(c, '\'' | '"') { if quote == Some(c) { quote=None; } else if quote.is_none() { quote=Some(c); } }
-            if quote.is_none() && c.is_whitespace() { None } else { Some(c) }
+        sql.chars().filter(move |c| {
+            if matches!(*c, '\'' | '"') { if quote == Some(*c) { quote=None; } else if quote.is_none() { quote=Some(*c); } }
+            !(quote.is_none() && c.is_whitespace())
         })
     }
     normalized(left).eq(normalized(right))

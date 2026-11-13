@@ -61,7 +61,9 @@ async fn subscribe_events(app: tauri::AppHandle, after_seq: u64, state: State<'_
     cursor.fetch_max(after_seq, Ordering::Relaxed);
     let paths = runtime_paths()?;
     eprintln!("ironbark-desktop: subscribe_events invoked after_seq={after_seq} socket={}", paths.socket.display());
-    let _ = tauri::async_runtime::spawn(async move {
+    // Fire-and-forget: the task owns its reconnect loop; dropping the
+    // JoinHandle detaches it (it keeps running until the process exits).
+    std::mem::drop(tauri::async_runtime::spawn(async move {
         loop {
             let after = cursor.load(Ordering::Relaxed);
             let mut client = match CoreClient::subscribe(&paths, after).await {
@@ -89,7 +91,7 @@ async fn subscribe_events(app: tauri::AppHandle, after_seq: u64, state: State<'_
             }
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
         }
-    });
+    }));
     Ok(())
 }
 

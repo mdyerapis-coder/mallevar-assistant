@@ -31,7 +31,7 @@ pub fn projects(conn: &rusqlite::Connection) -> Result<Vec<Project>> {
     Ok(result)
 }
 
-fn ok(value: CommandResult) -> CoreReply { CoreReply::Ok { value } }
+fn ok(value: CommandResult) -> CoreReply { CoreReply::Ok { value: Box::new(value) } }
 fn invalid(message: &str) -> CoreReply { CoreReply::Error { code: "invalid_command".into(), message: message.into(), details: serde_json::json!({}) } }
 
 pub fn execute(tx: &Transaction<'_>, id: Uuid, command: &CoreCommand) -> Result<CoreReply> {

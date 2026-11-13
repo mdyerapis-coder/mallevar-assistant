@@ -168,7 +168,7 @@ pub fn gate(report: &EvaluationReportInput) -> GateVerdict {
     if h.upper_error_bound > MAX_UPPER_ERROR_BOUND + 1e-12 { reasons.push("error_bound_exceeded".into()); }
     for cls in REQUIRED_CLASSES {
         let metrics = h.by_class.get(cls);
-        if metrics.map_or(true, |m| m.total < 1) { reasons.push(format!("class_missing:{cls}")); }
+        if metrics.is_none_or(|m| m.total < 1) { reasons.push(format!("class_missing:{cls}")); }
     }
     if report.observed_identity_digest != report.claimed_identity {
         reasons.push("model_identity_mismatch".into());
@@ -198,7 +198,7 @@ impl QualificationStore {
         }
         for (name, value) in [("coverage", report.holdout.coverage), ("upper_error_bound", report.holdout.upper_error_bound)] {
             if !value.is_finite() {
-                return Err(CoreError::new("metrics_inconsistent", &format!("{name} is not finite")));
+                return Err(CoreError::new("metrics_inconsistent", format!("{name} is not finite")));
             }
         }
         Ok(())
@@ -222,10 +222,10 @@ impl QualificationStore {
             let mut stmt = tx.prepare(
                 "SELECT decision_id, body FROM judgments WHERE decision_id LIKE 'qual:%' AND state='enabled'",
             ).map_err(|e| CoreError::new("storage_error", e.to_string()))?;
-            let mut rows = stmt.query_map([], |r| {
+            let rows = stmt.query_map([], |r| {
                 Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
             }).map_err(|e| CoreError::new("storage_error", e.to_string()))?;
-            while let Some(row) = rows.next() {
+            for row in rows {
                 let (decision_id, body_str) = row.map_err(|e| CoreError::new("storage_error", e.to_string()))?;
                 let stored: QualificationRecord = serde_json::from_str(&body_str)
                     .map_err(|_| CoreError::new("storage_corrupt", "persisted qualification body is not valid JSON"))?;
@@ -275,9 +275,9 @@ impl QualificationStore {
                  AND state='enabled' AND model_identity IS NOT NULL
                  ORDER BY created_at DESC, decision_id DESC LIMIT 1",
             ).map_err(|e| CoreError::new("storage_error", e.to_string()))?;
-            let mut rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(|e| CoreError::new("storage_error", e.to_string()))?;
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(|e| CoreError::new("storage_error", e.to_string()))?;
             let mut found: Option<QualificationRecord> = None;
-            while let Some(row) = rows.next() {
+            for row in rows {
                 let body = row.map_err(|e| CoreError::new("storage_error", e.to_string()))?;
                 let record: QualificationRecord = serde_json::from_str(&body)
                     .map_err(|_| CoreError::new("storage_corrupt", "persisted qualification body is not valid JSON"))?;
@@ -297,10 +297,10 @@ impl QualificationStore {
                 "SELECT body FROM judgments WHERE decision_id LIKE 'qual:%'
                  ORDER BY created_at DESC, decision_id DESC",
             ).map_err(|e| CoreError::new("storage_error", e.to_string()))?;
-            let mut rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(|e| CoreError::new("storage_error", e.to_string()))?;
+            let rows = stmt.query_map([], |r| r.get::<_, String>(0)).map_err(|e| CoreError::new("storage_error", e.to_string()))?;
             let mut enabled: Option<QualificationRecord> = None;
             let mut blocked: Vec<QualificationRecord> = Vec::new();
-            while let Some(row) = rows.next() {
+            for row in rows {
                 let body = row.map_err(|e| CoreError::new("storage_error", e.to_string()))?;
                 let record: QualificationRecord = serde_json::from_str(&body)
                     .map_err(|_| CoreError::new("storage_corrupt", "persisted qualification body is not valid JSON"))?;

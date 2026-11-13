@@ -58,7 +58,7 @@ pub enum RunEvent {
 }
 
 fn illegal(from: RunState, event: RunEvent) -> Result<RunState> {
-    Err(CoreError::new("illegal_transition", &format!(
+    Err(CoreError::new("illegal_transition", format!(
         "event {:?} is not legal from run state {:?}; run state is owned by C4",
         event, from
     )))

@@ -50,7 +50,7 @@ enum Incoming {
         #[serde(default, deserialize_with = "present_non_null")] error: Option<WireError>,
     },
     Event { protocol: u8, id: Uuid, run_id: RunId, event: WorkerEvent },
-    HostRequest { protocol: u8, id: Uuid, request_id: Uuid, run_id: RunId, session_id: String, method: HostMethod },
+    HostRequest { protocol: u8, id: Uuid, request_id: Uuid, run_id: RunId, session_id: String, method: Box<HostMethod> },
 }
 fn present_non_null<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(deserializer: D) -> std::result::Result<Option<T>, D::Error> {
     T::deserialize(deserializer).map(Some)
@@ -111,9 +111,8 @@ impl WorkerHost {
             let policy: ProjectPolicy = serde_json::from_str(&policy)?;
             if policy.project_id != project { return Err(correlation()); }
             let digest = hash(&serde_json::to_vec(&json!({"run":run,"project":project,"state":state,"body":body,"policy":policy}))?);
-            if let Some((path,fd)) = &pinned {
-                if path != Path::new(&root) || std::fs::read_link(format!("/proc/self/fd/{}",fd.as_raw_fd()))? != *path { return Err(correlation()); }
-            }
+            if let Some((path,fd)) = &pinned
+                && (path != Path::new(&root) || std::fs::read_link(format!("/proc/self/fd/{}",fd.as_raw_fd()))? != *path) { return Err(correlation()); }
             Ok(Snapshot { policy, root: PathBuf::from(root), root_fd:pinned.map(|(_,fd)|fd), state: digest })
         }).await
     }
@@ -442,7 +441,7 @@ async fn dispatch(shared: &Arc<Shared>, incoming: Incoming, writer: &mpsc::Sende
             let shared = shared.clone();
             let writer = writer.clone();
             tokio::spawn(async move {
-                let result = host_callback(&shared, request_id, &session_id, method).await;
+                let result = host_callback(&shared, request_id, &session_id, *method).await;
                 let mut response = json!({"protocol":2,"kind":"host_reply","id":id,"request_id":request_id,"run_id":run_id,"session_id":session_id});
                 match result {
                     Ok(result) => response["result"] = result,
@@ -565,7 +564,7 @@ async fn host_callback(shared: &Shared, request_id: Uuid, session_id: &str, meth
                     let state = shared.state.lock().await;
                     let p = state.pending.get(&request_id).ok_or_else(correlation)?;
                     if !matches!(&p.method, NativeMethod::Turn {..}) { return Err(correlation()); }
-                    p.method.as_turn_input().ok().map(|t| t.clone())
+                    p.method.as_turn_input().ok()
                 };
                 if let Some(active) = pending_fresh {
                     if turn != active { return Err(correlation()); }

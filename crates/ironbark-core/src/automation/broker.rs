@@ -35,6 +35,7 @@ use std::path::Path;
 
 /// The automation broker.
 #[derive(Clone)]
+#[derive(Default)]
 pub struct AutomationBroker {
     store: Store,
     cas_root: Option<std::path::PathBuf>,
@@ -363,7 +364,7 @@ impl AutomationBroker {
             .map_err(|e| CoreError::new("invalid_scope", format!("scope is not serialisable: {e}")))?;
         let event = CoreEvent::StateChanged {
             entity_id: format!("automation-scope/{}", target.scope_id),
-            state: state.into(),
+            state,
         };
         let _ = self
             .store
@@ -473,7 +474,6 @@ impl AutomationBroker {
                     effect: Effect::Unchanged,
                     accessibility_tree: Some(serde_json::Value::Object(tree)),
                     image_artifact: None,
-                    result: Some(format!("document_file:{} bytes", bytes.len())),
                 })
             }
             "execute" => {
@@ -524,7 +524,6 @@ impl AutomationBroker {
                     effect,
                     accessibility_tree: None,
                     image_artifact: None,
-                    result: Some(format!("document_file:{} bytes", after.len())),
                 })
             }
             _ => Err(CoreError::new(
@@ -552,10 +551,6 @@ fn scope_kind_matches(kind: TargetKind, action_kind: &str) -> bool {
     }
 }
 
-fn scope_entity(scope_id: &str) -> String {
-    format!("automation-scope/{scope_id}")
-}
-
 fn unsupported_on_wayland(
     target: &ApprovedTarget,
     operation: &str,
@@ -564,9 +559,7 @@ fn unsupported_on_wayland(
     if target.kind != TargetKind::NativeWindow {
         return None;
     }
-    if std::env::var_os("WAYLAND_DISPLAY").is_none() {
-        return None;
-    }
+    std::env::var_os("WAYLAND_DISPLAY")?;
     let is_global = parameters.get("input_mode").and_then(|v| v.as_str()) == Some("global")
         || (parameters.get("x").is_some()
             && parameters.get("y").is_some()
@@ -587,7 +580,6 @@ fn unsupported_on_wayland(
 #[derive(Clone)]
 struct CanonicalArgs {
     target_id: String,
-    observation_digest: Digest,
     operation: String,
     parameters: serde_json::Value,
 }
@@ -602,7 +594,9 @@ fn parse_action_args(action: &ActionSpec) -> Result<CanonicalArgs> {
         .and_then(|v| v.as_str())
         .ok_or_else(|| CoreError::new("invalid_action", "target_id missing"))?
         .to_string();
-    let observation_digest = Digest::parse(
+    // `observation_digest` is validated (present + well-formed) but not
+    // retained: the broker re-observes the target revision at execute time.
+    Digest::parse(
         obj.get("observation_digest")
             .and_then(|v| v.as_str())
             .ok_or_else(|| CoreError::new("invalid_action", "observation_digest missing"))?,
@@ -618,7 +612,6 @@ fn parse_action_args(action: &ActionSpec) -> Result<CanonicalArgs> {
         .unwrap_or(serde_json::Value::Null);
     Ok(CanonicalArgs {
         target_id,
-        observation_digest,
         operation,
         parameters,
     })
@@ -676,14 +669,5 @@ struct ExecutionReport {
     effect: Effect,
     accessibility_tree: Option<serde_json::Value>,
     image_artifact: Option<ArtifactId>,
-    result: Option<String>,
 }
 
-impl Default for AutomationBroker {
-    fn default() -> Self {
-        Self {
-            store: Store::default(),
-            cas_root: None,
-        }
-    }
-}

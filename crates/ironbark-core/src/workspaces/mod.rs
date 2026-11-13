@@ -8,7 +8,7 @@ pub use worktrees::{CheckKind, WorkspaceChoice, WorkspaceService, WorktreeLease,
 pub use crate::contracts::WorkspaceMode;
 pub use diffs::{DiffCapture, DiffSummary};
 
-use crate::error::{CoreError, Result};
+use crate::error::CoreError;
 
 /// One active writer lease per worktree path. The second writer gets a typed
 /// `workspace_busy` error instead of a shared mutable baseline.
@@ -26,16 +26,3 @@ pub(crate) fn git_failed(command: &str, code: std::process::ExitStatus, output: 
     CoreError::new("git_failed", detail)
 }
 
-pub(crate) fn require_sha256(value: &str) -> Result<()> {
-    value.bytes().try_for_each(|b| {
-        if b.is_ascii_digit() || (b'a'..=b'f').contains(&b) {
-            Ok(())
-        } else {
-            Err(CoreError::new("invalid_digest", "Digest must be lowercase SHA-256 hex"))
-        }
-    })?;
-    if value.len() != 64 {
-        return Err(CoreError::new("invalid_digest", "Digest must be 64 hex bytes"));
-    }
-    Ok(())
-}

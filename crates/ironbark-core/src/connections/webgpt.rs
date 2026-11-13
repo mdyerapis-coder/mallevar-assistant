@@ -42,7 +42,6 @@
 use std::{
     fs,
     io::{Cursor, Read},
-    os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
 };
 
@@ -742,7 +741,6 @@ impl WebGptService {
             .store
             .with_connection({
                 let digest = digest.clone();
-                let project_id = project_id.clone();
                 move |conn| {
                     let value: Option<String> = conn
                         .query_row(
@@ -817,7 +815,7 @@ impl WebGptService {
 
     fn objects(&self, project: ProjectId) -> Result<ObjectStore> {
         let root = self.data_dir.join("objects").join(project.to_string());
-        Ok(ObjectStore::new(self.store.clone(), project, root, ObjectLimits::default())?)
+        ObjectStore::new(self.store.clone(), project, root, ObjectLimits::default())
     }
 
     async fn project_of_run(&self, run: RunId) -> Result<ProjectId> {
@@ -887,7 +885,7 @@ impl WebGptService {
         project: ProjectId,
         run: RunId,
     ) -> Result<()> {
-        let path = format!("webgpt_submission/{}/{}", receipt.idempotency_key.to_string(), receipt.digest.as_str());
+        let path = format!("webgpt_submission/{}/{}", receipt.idempotency_key, receipt.digest.as_str());
         let bytes = serde_json::to_vec(receipt).map_err(|_| CoreError::new("receipt_invalid", "receipt serialization failed"))?;
         let objects = self.objects(project)?;
         let limit = bytes.len() as u64;
@@ -927,7 +925,7 @@ impl WebGptService {
     }
 
     async fn store_event(&self, run: RunId, receipt: &WebGptSubmissionReceipt) -> Result<()> {
-        let entity_id = format!("webgpt_submission/{}", receipt.idempotency_key.to_string());
+        let entity_id = format!("webgpt_submission/{}", receipt.idempotency_key);
         let state_str = match receipt.state {
             WebGptSubmissionState::Submitted => "submitted",
             WebGptSubmissionState::Failed => "failed",
@@ -943,13 +941,11 @@ impl WebGptService {
     }
 
     async fn activation_identity(&self) -> (String, Option<Digest>) {
-        if let Ok(connection) = self.bridge_connection().await {
-            if let Ok(status) = self.probe(&connection).await {
-                if status.state == WebGptActivationState::Activated {
+        if let Ok(connection) = self.bridge_connection().await
+            && let Ok(status) = self.probe(&connection).await
+                && status.state == WebGptActivationState::Activated {
                     return (status.sidecar_version.unwrap_or_else(|| PINNED_SIDECAR_VERSION.to_owned()), status.profile_digest);
                 }
-            }
-        }
         (PINNED_SIDECAR_VERSION.to_owned(), None)
     }
 

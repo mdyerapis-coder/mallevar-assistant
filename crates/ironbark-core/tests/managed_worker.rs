@@ -508,7 +508,7 @@ async fn session_run_and_permission_mismatches_never_reach_a_tool_effect() {
     let session = fixture.bind(&worker).await;
     let mut wrong = session.clone();
     wrong["native_id"] = json!("another-session");
-    let error = worker.request(Uuid::new_v4(), serde_json::from_value(fixture.turn(&wrong)).unwrap()).await.err().expect("session pin");
+    let error = worker.request(Uuid::new_v4(), serde_json::from_value(fixture.turn(&wrong)).unwrap()).await.expect_err("session pin");
     assert_eq!(error.code, "worker_correlation");
     {
     let turn = worker.request(Uuid::new_v4(), serde_json::from_value(fixture.turn(&session)).unwrap());

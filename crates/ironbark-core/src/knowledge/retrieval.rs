@@ -21,7 +21,7 @@ impl KnowledgeService {
         let policy = require_policy(&self.store, project).await?;
         let policy = policy.clone();
         let query = query.to_string();
-        let limit = limit.max(1).min(64);
+        let limit = limit.clamp(1, 64);
         let ranked = self.store.with_connection(move |conn| {
             ensure_fts(conn)?;
             chunks::rank_lexical(conn, project, &RoutePin { connection_id: "local".into(), model_id: "local".into(), harness: None }, &policy, &query, limit)

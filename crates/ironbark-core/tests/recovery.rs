@@ -229,7 +229,7 @@ async fn stale_resume_does_not_reuse_grant() {
         .expect("grant issued");
 
     // A checkpoint exists, so the crash boundary is resumable…
-    let recovery = Recovery::new(store.clone(), project.clone(), cas.clone()).unwrap();
+    let recovery = Recovery::new(store.clone(), project, cas.clone()).unwrap();
     recovery.checkpoints().capture(run, CheckpointPhase::Planned, ResultManifest {
         run_id: run,
         native_session: None,

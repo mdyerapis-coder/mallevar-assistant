@@ -137,13 +137,18 @@ fn every_remaining_64bit_dto_field_crosses_as_a_canonical_decimal_string() {
 #[test]
 fn command_result_envelope_is_command_tagged_and_rejects_mismatched_or_echoed_values() {
     let policy = policy();
-    let wire = serde_json::to_value(CoreReply::Ok { value: CommandResult::ProjectPolicyShow { value: policy.clone() } }).unwrap();
+    let wire = serde_json::to_value(CoreReply::Ok { value: Box::new(CommandResult::ProjectPolicyShow { value: policy.clone() }) }).unwrap();
     assert_eq!(wire["type"], json!("ok"));
     assert_eq!(wire["value"]["command"], json!("project_policy_show"));
     assert_eq!(wire["value"]["value"]["version"], json!("9007199254740993"));
     let back: CoreReply = serde_json::from_value(wire).unwrap();
     match back {
-        CoreReply::Ok { value: CommandResult::ProjectPolicyShow { value } } => assert_eq!(value, policy),
+        CoreReply::Ok { value } => {
+            let CommandResult::ProjectPolicyShow { value } = *value else {
+                panic!("round trip changed the command result envelope: {value:?}")
+            };
+            assert_eq!(value, policy);
+        }
         other => panic!("round trip changed the command result envelope: {other:?}"),
     }
 }
